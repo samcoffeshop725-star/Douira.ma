@@ -29,6 +29,8 @@ img{max-width:100%}
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
+/* Douira · feuille de style de base. Source : build/a_base.css (ne pas éditer le HTML généré).
+   build.py l'injecte dans le <style> de a_head.html, puis z_theme.css par-dessus. */
 /* Layout : barre de démonstration + en-tête collant ; pages publiques en colonne de 1200px ;
    espaces de gestion en grille « barre latérale + contenu » qui passe en onglets défilants sur mobile. */
 :root{
@@ -130,8 +132,7 @@ nav.main button:hover,nav.main button[aria-current="true"]{color:var(--ink);back
 label.f{display:flex;flex-direction:column;gap:5px;font-size:.84rem;font-weight:600;color:var(--ink);min-width:0}
 label.f .hint{font-weight:400;color:var(--muted);font-size:.8rem}
 input,select,textarea{font:inherit;font-size:.95rem;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;min-width:0}
-/* Champs de date : l'icône native du calendrier (iOS/Safari) débordait du champ. On la masque et on dessine une icône
-   placée proprement dans le champ, de couleur adaptée au thème. Le texte est aligné à gauche comme les autres champs. */
+/* Champ date : sur iOS l'icône native déborde du champ arrondi. On masque l'icône système et on dessine la nôtre (couleur --muted clair/sombre). */
 input[type=date]{-webkit-appearance:none;appearance:none;padding-right:34px;background-repeat:no-repeat;background-position:right 10px center;background-size:18px 18px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2373625A' stroke-width='2' stroke-linecap='round'%3E%3Crect x='3' y='4.5' width='18' height='17' rx='2.5'/%3E%3Cpath d='M3 9h18M8 2.5v4M16 2.5v4'/%3E%3C/svg%3E")}
 input[type=date]::-webkit-calendar-picker-indicator{opacity:0}
 input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
@@ -6666,7 +6667,7 @@ if (IS_ONLINE) {
     return `<h2>Réservation en ligne momentanément indisponible</h2>
       <p>Les comptes et le paiement en ligne ne sont pas actifs sur ce serveur pour le moment. Notre équipe prend votre demande directement :</p>
       ${wa ? `<a class="btn btn-p" href="${esc(wa)}" target="_blank" rel="noopener">Écrire sur WhatsApp</a>` : ''}
-      ${mail ? `<p class="small">Ou par e-mail : <b class="mono">${esc(mail)}</b></p>` : ''}
+      ${mail ? `<p class="small">${wa ? 'Ou par e-mail' : 'Par e-mail'} : <b class="mono">${esc(mail)}</b></p>` : ''}
       <div class="row"><button class="btn btn-g" data-act="go" data-to="contact">Formulaire de contact</button><button type="button" class="btn btn-g" data-act="closeModal">Fermer</button></div>`;
   }
   A.apiDown = d => openModal(apiDownPanel(d && d.what));
@@ -6695,7 +6696,10 @@ if (IS_ONLINE) {
       <div class="row"><button class="btn btn-p" type="submit">Enregistrer</button><button type="button" class="btn btn-g" data-act="closeModal">Annuler</button></div></form>`;
   }
   let pendingOnline = null;
-  A.login = d => ONLINE.apiDown ? openModal(apiDownPanel('créer un compte')) : openModal(loginModal((d && d.note) || '', (d && d.tab) || 'login'));
+  // La vérification de l'API au chargement dure quelques dixièmes de seconde : un clic immédiat sur « Se connecter »
+  // attend son résultat, pour ne jamais ouvrir un formulaire qui ne pourrait pas aboutir.
+  A.login = async d => { try { await ONLINE.probe; } catch (e) { /* la vérification a déjà conclu */ }
+    return ONLINE.apiDown ? openModal(apiDownPanel('créer un compte')) : openModal(loginModal((d && d.note) || '', (d && d.tab) || 'login')); };
   A.authTab = d => { const m = $('#modal-root .modal'); if (m) m.innerHTML = loginModal('', d.tab); const f = $('#modal-root input'); if (f) f.focus(); };
   A.forgot = () => openModal(`<h2>Mot de passe oublié</h2><p class="muted">Indiquez votre e-mail : si un compte existe, vous recevrez un lien valable 30 minutes.</p><form class="stack" data-form="olForgot">${field('E-mail', '<input name="email" type="email" required autocomplete="email">')}<div class="row"><button class="btn btn-p" type="submit">Envoyer le lien</button><button type="button" class="btn btn-g" data-act="closeModal">Annuler</button></div></form>`);
   A.logout = () => { api('POST', '/api/auth/logout', {}).catch(() => {}).finally(() => { ONLINE.forced = false; setUser(null); pendingOnline = null; _closeModalOnline(); go('home'); toast('Vous êtes déconnecté.'); }); };
@@ -6891,7 +6895,7 @@ if (IS_ONLINE) {
 
   /* ---------- Session au chargement ---------- */
   /* Au chargement : vérifier que l'API répond (sinon le site reste consultable et oriente vers le contact), puis lire la session. */
-  (async () => {
+  ONLINE.probe = (async () => {
     try {
       const r = await fetch('/api/health', { headers: { accept: 'application/json' }, credentials: 'same-origin' });
       const j = await r.json().catch(() => null);
@@ -7877,6 +7881,7 @@ const EN = {
 "Paiement sécurisé": "Secure payment",
 "Paiements et factures": "Payments and invoices",
 "Palmeraie, route de l'Ourika, Amelkis : des villas avec jardin et piscine, en famille ou entre amis, avec un gardien et notre équipe à portée de message.": "Palmeraie, Ourika road, Amelkis: villas with a garden and a pool, with family or friends, with a caretaker and our team a message away.",
+"Par e-mail :": "By email:",
 "Par jour": "Per day",
 "Par mois": "Per month",
 "Par nuit": "Per night",
