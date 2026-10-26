@@ -130,6 +130,9 @@ nav.main button:hover,nav.main button[aria-current="true"]{color:var(--ink);back
 label.f{display:flex;flex-direction:column;gap:5px;font-size:.84rem;font-weight:600;color:var(--ink);min-width:0}
 label.f .hint{font-weight:400;color:var(--muted);font-size:.8rem}
 input,select,textarea{font:inherit;font-size:.95rem;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;min-width:0}
+/* Champs de date : garder l'icône native du calendrier dans le champ (sinon elle dépasse un peu du coin arrondi sur iOS/Safari) */
+input[type=date],input[type=time]{overflow:hidden}
+input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-calendar-picker-indicator{margin-inline-start:4px;flex:none}
 textarea{min-height:96px;resize:vertical}
 input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:0;border-color:var(--accent)}
 input[type=checkbox],input[type=radio]{width:auto;accent-color:var(--accent)}
