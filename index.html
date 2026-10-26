@@ -130,9 +130,13 @@ nav.main button:hover,nav.main button[aria-current="true"]{color:var(--ink);back
 label.f{display:flex;flex-direction:column;gap:5px;font-size:.84rem;font-weight:600;color:var(--ink);min-width:0}
 label.f .hint{font-weight:400;color:var(--muted);font-size:.8rem}
 input,select,textarea{font:inherit;font-size:.95rem;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;min-width:0}
-/* Champs de date : garder l'icône native du calendrier dans le champ (sinon elle dépasse un peu du coin arrondi sur iOS/Safari) */
-input[type=date],input[type=time]{overflow:hidden}
-input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-calendar-picker-indicator{margin-inline-start:4px;flex:none}
+/* Champs de date : l'icône native du calendrier (iOS/Safari) débordait du champ. On la masque et on dessine une icône
+   placée proprement dans le champ, de couleur adaptée au thème. Le texte est aligné à gauche comme les autres champs. */
+input[type=date]{-webkit-appearance:none;appearance:none;padding-right:34px;background-repeat:no-repeat;background-position:right 10px center;background-size:18px 18px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2373625A' stroke-width='2' stroke-linecap='round'%3E%3Crect x='3' y='4.5' width='18' height='17' rx='2.5'/%3E%3Cpath d='M3 9h18M8 2.5v4M16 2.5v4'/%3E%3C/svg%3E")}
+input[type=date]::-webkit-calendar-picker-indicator{opacity:0}
+input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) input[type=date]{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23B3A49C' stroke-width='2' stroke-linecap='round'%3E%3Crect x='3' y='4.5' width='18' height='17' rx='2.5'/%3E%3Cpath d='M3 9h18M8 2.5v4M16 2.5v4'/%3E%3C/svg%3E")}}
+:root[data-theme="dark"] input[type=date]{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23B3A49C' stroke-width='2' stroke-linecap='round'%3E%3Crect x='3' y='4.5' width='18' height='17' rx='2.5'/%3E%3Cpath d='M3 9h18M8 2.5v4M16 2.5v4'/%3E%3C/svg%3E")}
 textarea{min-height:96px;resize:vertical}
 input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:0;border-color:var(--accent)}
 input[type=checkbox],input[type=radio]{width:auto;accent-color:var(--accent)}
