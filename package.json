@@ -1,0 +1,13 @@
+{
+  "name": "douira-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Douira · API comptes, réservations et paiement (montée par server.js). Aucune dépendance obligatoire : pg est utilisé s'il est installé.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "migrate": "node cli.js migrate",
+    "backup": "node cli.js backup ./sauvegardes",
+    "test": "cd .. && node t_api.js && node t_online.js"
+  },
+  "optionalDependencies": { "pg": "^8.13.0" }
+}

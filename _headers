@@ -1,0 +1,15 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-u8D2bwiB6sDgnXl/w9CLTJGiSF5qoUa315P+rbpBnfg=' 'sha256-yPok1yaUryZPYYSrzbmSy5WqDhNL5v8egm7SNs/5Yac='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://api.maptiler.com https://tiles.stadiamaps.com; media-src 'self' blob:; connect-src 'self' https://open.er-api.com; frame-ancestors 'none'; base-uri 'self'; form-action 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  X-Frame-Options: DENY
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+/index.html
+  Cache-Control: no-cache
+/config.js
+  Cache-Control: no-cache
+/photos/*
+  Cache-Control: public, max-age=604800
+/videos/*
+  Cache-Control: public, max-age=604800

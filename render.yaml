@@ -1,0 +1,32 @@
+# Render · variante « site + API » : un service web Node (server.js + api/) et une base PostgreSQL.
+# À copier en render.yaml à la racine du dépôt à la place du blueprint statique quand config.js est en mode 'en-ligne'.
+services:
+  - type: web
+    name: douira
+    runtime: node
+    plan: starter                       # pas de mise en veille (le plan gratuit coupe le service et les paiements en attente)
+    buildCommand: "cd api && npm install --omit=dev"
+    startCommand: "node server.js"
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase: { name: douira-db, property: connectionString }
+      - key: DATA_KEY
+        sync: false                     # générée une fois : node api/cli.js keygen ; à sauvegarder hors de Render
+      - key: SITE_URL
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: PSP
+        value: stripe
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+databases:
+  - name: douira-db
+    plan: basic-256mb                   # sauvegardes quotidiennes incluses par Render ; ajouter la sauvegarde chiffrée hors site (api/cli.js backup)
+    postgresMajorVersion: "16"

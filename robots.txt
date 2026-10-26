@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+# Après l'achat du domaine, ajoutez la ligne suivante :
+# Sitemap: https://www.votre-domaine.ma/sitemap.xml
