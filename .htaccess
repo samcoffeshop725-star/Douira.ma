@@ -1,0 +1,27 @@
+# Hébergement Apache (offres mutualisées) : en-têtes de sécurité, HTTPS, page 404
+AddDefaultCharset UTF-8
+AddType application/manifest+json .webmanifest
+AddType video/mp4 .mp4 .m4v
+AddType video/webm .webm
+AddType video/quicktime .mov
+ErrorDocument 404 /404.html
+Options -Indexes
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} off
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+<IfModule mod_headers.c>
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-u8D2bwiB6sDgnXl/w9CLTJGiSF5qoUa315P+rbpBnfg=' 'sha256-yPok1yaUryZPYYSrzbmSy5WqDhNL5v8egm7SNs/5Yac='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://api.maptiler.com https://tiles.stadiamaps.com; media-src 'self' blob:; connect-src 'self' https://open.er-api.com; frame-ancestors 'none'; base-uri 'self'; form-action 'none'"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+  Header always set X-Frame-Options "DENY"
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  <FilesMatch "^(index\.html|config\.js)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>

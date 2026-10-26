@@ -306,9 +306,14 @@ R.add('POST', '/api/admin/settings/mail/test', async ctx => { const a = requireC
 /* ---------- Point d'entrée : (req, res) → true si la requête a été traitée ---------- */
 /* Compte administrateur principal : créé au premier démarrage s'il n'existe aucun administrateur.
    Identifiant ADMIN_EMAIL (défaut : mohmed.anas.mosseddaq@gmail.com), mot de passe initial ADMIN_INITIAL_PASSWORD
-   (défaut : admin123) stocké haché (scrypt) et à changer obligatoirement à la première connexion. */
+   (défaut hors production : admin123) stocké haché (scrypt) et à changer obligatoirement à la première connexion.
+   En production, pas de mot de passe par défaut : sans ADMIN_INITIAL_PASSWORD solide, aucun compte n'est créé. */
 async function seedAdmin() {
   const exists = await db.one("SELECT id FROM users WHERE role = 'admin' AND deleted_at IS NULL LIMIT 1"); if (exists) return;
+  if (process.env.NODE_ENV === 'production') {
+    const p = process.env.ADMIN_INITIAL_PASSWORD ? sec.passwordProblem(process.env.ADMIN_INITIAL_PASSWORD) : 'ADMIN_INITIAL_PASSWORD absente.';
+    if (p) { console.error(`Administrateur non créé : ${p} Définissez ADMIN_INITIAL_PASSWORD (10 caractères min.) puis redémarrez.`); return; }
+  }
   const email = String(process.env.ADMIN_EMAIL || 'mohmed.anas.mosseddaq@gmail.com').toLowerCase(), pw = process.env.ADMIN_INITIAL_PASSWORD || 'admin123';
   await db.query("INSERT INTO users (email, name, role, pass_hash, consent_at, must_change_password) VALUES ($1, $2, 'admin', $3, now(), true) ON CONFLICT (email) DO UPDATE SET role = 'admin', pass_hash = EXCLUDED.pass_hash, must_change_password = true, deleted_at = NULL", [email, 'Administrateur', sec.hashPassword(pw)]);
   console.warn(`Administrateur créé : ${email} avec le mot de passe initial — à changer dès la première connexion (obligatoire).`);

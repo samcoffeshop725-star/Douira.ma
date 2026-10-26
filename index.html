@@ -4559,7 +4559,8 @@ const waLink = text => waNumber() ? `https://wa.me/${waNumber()}?text=${encodeUR
 function vitrineState() {
   seed();
   const c = VCFG, st = S.settings;
-  ['siteName', 'whatsapp', 'markupPct'].forEach(k => { if (c[k] !== undefined && c[k] !== '') st[k] = c[k]; });
+  ['siteName', 'markupPct'].forEach(k => { if (c[k] !== undefined && c[k] !== '') st[k] = c[k]; });
+  st.whatsapp = c.whatsapp || '';   // vide dans config.js : aucun numéro affiché (jamais celui de la démonstration)
   st.contactEmail = c.email || '';
   st.adminEmail = c.email || '';
   st.serviceFeePct = 0; st.showPctToClients = false; st.touristTax = 0;
@@ -4575,9 +4576,16 @@ function vitrineState() {
   st.companyAddress = co.adresse || '[Adresse à renseigner]'; st.cndp = co.cndp ? 'Récépissé CNDP : ' + co.cndp : '';
   const city = st.cities[0] || 'Marrakech';
   S.content.heroTitle = (c.textes && c.textes.titre) || `Appartements et villas sélectionnés à ${city}.`;
-  S.content.heroText = (c.textes && c.textes.introduction) || "Choisissez votre logement et vos dates, envoyez votre demande en un clic : notre équipe vous répond sur WhatsApp, confirme la disponibilité et vous indique les modalités de paiement.";
+  S.content.heroText = (c.textes && c.textes.introduction) || (IS_ONLINE
+    ? "Choisissez votre logement et vos dates, puis réservez et payez en ligne : confirmation immédiate, adresse et code d'accès dans votre espace la veille de l'arrivée."
+    : "Choisissez votre logement et vos dates, envoyez votre demande en un clic : notre équipe vous répond sur WhatsApp, confirme la disponibilité et vous indique les modalités de paiement.");
   S.content.ownerPitch = (c.textes && c.textes.proprietaires) || "Confiez-nous votre appartement ou votre villa : annonce, accueil des voyageurs et suivi des séjours.";
-  S.content.faq = (c.textes && Array.isArray(c.textes.faq) && c.textes.faq.length) ? c.textes.faq : [
+  S.content.faq = (c.textes && Array.isArray(c.textes.faq) && c.textes.faq.length) ? c.textes.faq : IS_ONLINE ? [
+    { q: 'Comment réserver ?', a: "Choisissez vos dates sur la fiche du logement, créez votre compte et payez en ligne : votre réservation est confirmée immédiatement." },
+    { q: 'Le prix affiché est-il définitif ?', a: "Le détail du séjour vous est présenté avant le paiement : nuits, total en dirhams, conditions d'annulation. Aucun montant n'est débité avant votre validation." },
+    { q: "Quand est-ce que je reçois l'adresse ?", a: "L'adresse exacte et le code d'accès apparaissent dans votre espace client la veille de votre arrivée." },
+    { q: 'Je suis propriétaire, comment proposer mon bien ?', a: "Utilisez la page « Proposer mon bien » ou écrivez-nous : un membre de l'équipe vous recontacte pour visiter le bien." }
+  ] : [
     { q: 'Comment réserver ?', a: "Choisissez vos dates sur la fiche du logement et envoyez votre demande. Notre équipe vous répond sur WhatsApp pour confirmer la disponibilité, le prix et les modalités de paiement." },
     { q: 'Le prix affiché est-il définitif ?', a: "Le prix affiché par nuit est celui de nos logements. Le montant exact de votre séjour vous est confirmé avec la disponibilité." },
     { q: "Quand est-ce que je reçois l'adresse ?", a: "L'adresse exacte et les informations d'accès vous sont communiquées après la confirmation de votre réservation." },
@@ -4723,7 +4731,7 @@ if (IS_VITRINE) {
     const st = S.settings;
     return `<div class="gutter"><div class="wrap" style="padding-block:28px 10px"><div class="split">
       <form class="stack-l" data-form="vContact">
-        <div class="stack-s"><h1 style="font-size:clamp(1.7rem,3vw,2.3rem)">Contact et réclamations</h1><p class="muted" style="max-width:62ch">Une question, une réclamation ou un problème pendant votre séjour : écrivez-nous, notre équipe vous répond sur WhatsApp ou par e-mail.</p></div>
+        <div class="stack-s"><h1 style="font-size:clamp(1.7rem,3vw,2.3rem)">Contact et réclamations</h1><p class="muted" style="max-width:62ch">Une question, une réclamation ou un problème pendant votre séjour : écrivez-nous, notre équipe vous répond ${waNumber() ? 'sur WhatsApp ou par e-mail' : 'par e-mail'}.</p></div>
         <div class="panel fgrid">
           ${field('Type de demande', `<select id="ct-type" name="type">${opt('Question', 'Question', p.type)}${opt('Réclamation', 'Réclamation', p.type)}${opt('Problème pendant un séjour', 'Signaler un problème', p.type)}</select>`)}
           ${field('Nom', '<input id="ct-name" name="name" required autocomplete="name">')}${field('Téléphone ou e-mail', '<input id="ct-reach" name="reach" required>')}
@@ -5952,7 +5960,7 @@ renderFoot = function () {
     <div class="stack-s"><button data-act="go" data-to="home">Accueil</button><button data-act="go" data-to="search">Tous les logements</button>${activeCats().map(c => `<button data-act="go" data-to="search" data-cat="${c.id}">${esc(c.name)}</button>`).join('')}<button data-act="go" data-to="search" data-diamond="1">Biens Diamond</button>${showPk ? '<button data-act="go" data-to="packs">Packs complets</button>' : ''}${showSvc ? '<button data-act="go" data-to="services">Services et véhicules</button>' : ''}</div>
     <div class="stack-s"><button data-act="go" data-to="propose">Proposer mon bien</button><button data-act="login">Espace propriétaire</button><button data-act="go" data-to="contact">Contact et réclamations</button><button data-act="go" data-to="legal" data-doc="mentions">Mentions légales</button><button data-act="go" data-to="legal" data-doc="cgu">Conditions générales</button><button data-act="go" data-to="legal" data-doc="privacy">Confidentialité</button><button data-act="go" data-to="legal" data-doc="cancellation">Politique d'annulation</button>${isTeam() ? '<button data-act="go" data-to="dossier">Dossier technique du projet</button>' : ''}</div>
     <div class="stack-s"><span class="eyebrow">Réservez où que vous soyez</span><p class="small">Le site s'adapte à votre téléphone : ajoutez-le à votre écran d'accueil pour retrouver vos réservations et votre code d'accès.</p><div class="stores"><span class="store">${IC2.cal}<span>Réservation<b>en ligne</b></span></span><span class="store">${IC2.key}<span>Accès<b>dès le paiement</b></span></span></div></div>
-    <div class="stack-s"><span class="eyebrow">Nous contacter</span><p class="small">WhatsApp ${esc(st.whatsapp)}<br>${esc(st.contactEmail)}</p><p class="small">${esc(openCities().join(', '))}, Maroc</p><div class="social" aria-hidden="true"><span>f</span><span>ig</span><span>yt</span><span>in</span></div></div>
+    <div class="stack-s"><span class="eyebrow">Nous contacter</span><p class="small">${st.whatsapp ? `WhatsApp ${esc(st.whatsapp)}<br>` : ''}${esc(st.contactEmail)}</p><p class="small">${esc(openCities().join(', '))}, Maroc</p><div class="social" aria-hidden="true"><span>f</span><span>ig</span><span>yt</span><span>in</span></div></div>
     <div class="brand"><b>${esc(st.siteName)}</b></div>
     <div class="legalbar"><span>© ${year} ${esc(st.siteName)} · ${esc(st.company)} · ICE ${esc(st.ice)}</span><span>Données personnelles traitées conformément à la loi 09-08 · Paiement par carte sur la page sécurisée du prestataire</span></div>
   </div>`;
@@ -6020,7 +6028,7 @@ VIEWS.home = () => {
   <section class="ready gutter"><div class="wrap"><h2>Prêt à partir ?</h2>
     <div class="steps-h">
       <div><img src="${apts[0] ? lphoto(apts[0], 1) : art(1, 1)}" alt=""><div class="n">01</div><b>Choisissez votre logement</b><p>Appartement ou villa, aux dates de votre séjour, avec le prix final affiché dès la recherche.</p></div>
-      <div><img src="${villas[0] ? lphoto(villas[0], 1) : art(2, 2)}" alt=""><div class="n">02</div><b>${IS_VITRINE ? 'Envoyez votre demande' : 'Réservez en ligne'}</b><p>${IS_VITRINE ? 'En un clic, sur WhatsApp : notre équipe confirme la disponibilité et le paiement.' : 'Vérifiez la facture détaillée, puis payez en dirhams sur la page sécurisée de notre prestataire.'}</p></div>
+      <div><img src="${villas[0] ? lphoto(villas[0], 1) : art(2, 2)}" alt=""><div class="n">02</div><b>${IS_VITRINE && !IS_ONLINE ? 'Envoyez votre demande' : 'Réservez en ligne'}</b><p>${IS_VITRINE && !IS_ONLINE ? 'En un clic, sur WhatsApp : notre équipe confirme la disponibilité et le paiement.' : 'Vérifiez la facture détaillée, puis payez en dirhams sur la page sécurisée de notre prestataire.'}</p></div>
       <div><img src="photos/quartiers/${areaPhotoOf('Palmeraie').f}" alt="" data-fb-area="Palmeraie"><div class="n">03</div><b>Arrivez l'esprit libre</b><p>Adresse, itinéraire et code d'accès reçus dès la confirmation. Un souci ? Notre équipe locale répond pendant tout le séjour.</p></div>
     </div></div></section>
   <section class="cta-band gutter"><div class="wrap"><h2>${minPrice ? `Des séjours à partir de ${mad(minPrice)} par nuit` : 'Des séjours vérifiés, réservés en ligne'}</h2><button class="btn btn-p" data-act="go" data-to="search">Voir les logements</button></div></section>
@@ -6126,7 +6134,7 @@ VIEWS.listing = p => {
         </div>
         <div id="qbox"></div>
         <button class="btn btn-p" data-act="book" data-id="${l.id}" ${preview ? 'disabled' : ''}>${IS_VITRINE && !IS_ONLINE ? 'Demander une réservation' : 'Réserver'}</button>
-        <p class="small muted">${IS_VITRINE ? "Gratuit et sans engagement. Notre équipe vous confirme la disponibilité et les modalités de paiement." : "Aucun montant n'est débité à cette étape. Le paiement se fait ensuite sur la page sécurisée du prestataire de paiement."}</p>
+        <p class="small muted">${IS_VITRINE && !IS_ONLINE ? "Gratuit et sans engagement. Notre équipe vous confirme la disponibilité et les modalités de paiement." : "Aucun montant n'est débité à cette étape. Le paiement se fait ensuite sur la page sécurisée du prestataire de paiement."}</p>
         ${typeof svcNote === 'function' ? svcNote() : ''}
       </aside>
     </div>
@@ -6249,6 +6257,9 @@ parseHash = (orig => h => String(h || '').replace(/^#/, '') === 'categories' ? [
    4. Taux de change : ExchangeRate-API (point d'accès ouvert, sans clé),
       mis en cache, repli sur le taux manuel si l'API ne répond pas.
    ===================================================================== */
+// Texte d'invite de la recherche : les services (piscines, plages…) n'existent que dans la plateforme complète.
+const APP_SEARCH_PH = IS_VITRINE ? 'Rechercher un logement, un quartier…' : 'Rechercher piscines, plages, restaurants…';
+
 
 /* ---------- 1. Services : les catégories Privilee ---------- */
 // Clés, noms exacts de l'application (anglais) et libellés français affichés
@@ -6328,7 +6339,7 @@ VIEWS.services = () => {
   };
   return `<div class="gutter"><div class="wrap stack-l" style="padding-block:14px 10px">
     <div class="app-head"><button type="button" class="rbtn" data-act="back" aria-label="Retour">${IC2.back}</button><h1>Catégories</h1><span></span></div>
-    <form class="app-search" data-form="qs" role="search" autocomplete="off"><span class="qs-ico">${QS_ICON}</span><input type="search" name="q" id="svc-q" placeholder="Rechercher piscines, plages, restaurants…" aria-label="Rechercher sur le site"></form>
+    <form class="app-search" data-form="qs" role="search" autocomplete="off"><span class="qs-ico">${QS_ICON}</span><input type="search" name="q" id="svc-q" placeholder="${APP_SEARCH_PH}" aria-label="Rechercher sur le site"></form>
     <div class="cat-grid cat-grid-2">${PRIV_CATS.map(tile).join('')}${xs.length ? `<button class="cat-tile" data-act="svcJump" data-to="sv-veh"><img src="${xphoto(xs[0])}" alt="" loading="lazy"><span class="t"><b>Voitures et motos</b></span></button>` : ''}</div>
     ${PRIV_CATS.map(section).join('')}
     ${xs.length ? `<section class="stack" id="sv-veh"><div class="sec-head"><div><h2>Voitures et motos</h2><p>${IS_VITRINE ? 'Livrées à votre logement. Indiquez le véhicule souhaité dans votre demande de réservation : notre équipe confirme sa disponibilité.' : 'Livrées à votre logement le jour de votre arrivée. Ajoutez-les au moment de payer votre logement : seuls les véhicules libres à vos dates sont proposés.'}</p></div><button class="btn btn-p btn-s" data-act="go" data-to="search">Choisir un logement</button></div><div class="svgrid">${xs.map(vcard).join('')}</div><p class="small muted">Permis de conduire, âge minimum et caution vérifiés à la remise du véhicule.</p></section>` : ''}
@@ -6375,7 +6386,7 @@ function appHome() {
   const list = publicListings().sort((a, b) => recoScore(b) - recoScore(a));
   const nouveau = publicListings().slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
   return `<div class="app-home gutter">
-    <form class="app-search" data-form="qs" role="search" autocomplete="off"><span class="qs-ico">${QS_ICON}</span><input type="search" name="q" id="app-q" placeholder="Rechercher piscines, plages, restaurants…" aria-label="Rechercher sur le site"></form>
+    <form class="app-search" data-form="qs" role="search" autocomplete="off"><span class="qs-ico">${QS_ICON}</span><input type="search" name="q" id="app-q" placeholder="${APP_SEARCH_PH}" aria-label="Rechercher sur le site"></form>
     ${nouveau ? `<button class="app-hero" data-act="go" data-to="listing" data-id="${nouveau.id}"><img src="${lphoto(nouveau, 0)}" alt=""><span class="t"><span>Nouveau sur ${esc(S.settings.siteName)}</span><span class="arrow" aria-hidden="true">→</span></span></button>` : ''}
     <div class="row between"><h2 class="app-h2">Recommandé pour vous</h2><button class="btn btn-g btn-s map-pill" data-act="go" data-to="search" data-view="map">${IC2.map}Carte</button></div>
     <div class="app-rail">${list.slice(0, 6).map(l => `<button class="app-card" data-act="go" data-to="listing" data-id="${l.id}"><img src="${lphoto(l, 0)}" alt="" loading="lazy"><b>${esc(ltitle(l))}</b><span class="small muted">${esc(l.area)} · ${mad(pubPrice(l))} / ${UNIT_LABEL[tplOf(l).units[0]]}</span></button>`).join('')}</div>
@@ -6391,7 +6402,7 @@ VIEWS.categories = () => {
   const xs = showVehicles(); if (xs.length) tiles.push({ t: 'Voitures et motos', img: xphoto(xs[0]), act: 'data-act="go" data-to="services" data-cat="veh"' });
   return `<div class="gutter"><div class="wrap stack-l" style="padding-block:14px 10px">
     <div class="app-head"><button type="button" class="rbtn" data-act="back" aria-label="Retour">${IC2.back}</button><h1>Catégories</h1><span></span></div>
-    <form class="app-search" data-form="qs" role="search" autocomplete="off"><span class="qs-ico">${QS_ICON}</span><input type="search" name="q" id="cat-q" placeholder="Rechercher piscines, plages, restaurants…" aria-label="Rechercher sur le site"></form>
+    <form class="app-search" data-form="qs" role="search" autocomplete="off"><span class="qs-ico">${QS_ICON}</span><input type="search" name="q" id="cat-q" placeholder="${APP_SEARCH_PH}" aria-label="Rechercher sur le site"></form>
     <div class="cat-grid cat-grid-2">${tiles.map(t => `<button class="cat-tile" ${t.act}><img src="${t.img}" alt="" loading="lazy"><span class="t"><b>${esc(t.t)}</b></span></button>`).join('')}</div>
   </div></div>`;
 };
@@ -6775,7 +6786,7 @@ if (IS_ONLINE) {
         <div class="panel stack"><h3>Détail du prix</h3>${breakdownHtml(b.q)}<p class="small muted">Payé en ${esc(b.currency)} sur la page sécurisée de notre prestataire. Aucune donnée de carte n'est conservée par ${esc(S.settings.siteName)}.</p></div>
         ${l ? `<div class="panel stack"><h3>Règlement et annulation</h3><p>${esc(l.rules || '')}</p><p><b>Annulation ${POLICIES[l.policy].label.toLowerCase()} :</b> ${esc(POLICIES[l.policy].text)}</p>
           ${b.status === 'confirmed' && cached.refund ? `<p class="small">Si vous annulez maintenant : remboursement de <b>${mad(cached.refund.amount / 100)}</b> (${cached.refund.pct} %).</p><button class="btn btn-g btn-s" data-act="olCancel" data-id="${esc(b.id)}" data-refund="${cached.refund.amount}">Annuler ma réservation</button>` : ''}</div>` : ''}
-      </div><aside class="stack"><div class="panel stack-s"><h3>Besoin d'aide ?</h3><p class="small">Notre équipe répond sur WhatsApp et par e-mail.</p><button class="btn btn-g btn-s" data-act="go" data-to="contact">Nous contacter</button></div></aside></div>`;
+      </div><aside class="stack"><div class="panel stack-s"><h3>Besoin d'aide ?</h3><p class="small">${waNumber() ? 'Notre équipe répond sur WhatsApp et par e-mail.' : 'Notre équipe vous répond par e-mail.'}</p><button class="btn btn-g btn-s" data-act="go" data-to="contact">Nous contacter</button></div></aside></div>`;
   };
   A.olCancel = d => openModal(`<h2>Annuler la réservation ${esc(d.id)} ?</h2><p>${d.refund !== undefined ? `Remboursement prévu : <b>${mad(Number(d.refund) / 100)}</b>.` : 'Les dates seront libérées.'}</p><div class="row"><button class="btn btn-p" data-act="olCancelConfirm" data-id="${esc(d.id)}">Confirmer l'annulation</button><button class="btn btn-g" data-act="closeModal">Garder ma réservation</button></div>`);
   A.olCancelConfirm = async d => { try { const j = await api('POST', `/api/bookings/${encodeURIComponent(d.id)}/cancel`, {}); closeModal(); delete ONLINE.booking[d.id]; ONLINE.bookings = null; toast(j.refund ? `Réservation annulée. Remboursement : ${mad(j.refund / 100)}.` : 'Réservation annulée.'); render(); } catch (e) { toast(e.message, true); } };
@@ -7478,9 +7489,11 @@ const EN = {
 "Choisissez une note de 1 à 5 étoiles.": "Choose a rating from 1 to 5 stars.",
 "Choisissez vos dates sur la fiche": "Choose your dates on the listing page",
 "Choisissez vos dates sur la fiche du logement et envoyez votre demande. Notre équipe vous répond sur WhatsApp pour confirmer la disponibilité, le prix et les modalités de paiement.": "Choose your dates on the listing page and send your request. Our team replies on WhatsApp to confirm availability, price and how to pay.",
+"Choisissez vos dates sur la fiche du logement, créez votre compte et payez en ligne : votre réservation est confirmée immédiatement.": "Pick your dates on the property page, create your account and pay online: your booking is confirmed straight away.",
 "Choisissez vos dates.": "Choose your dates.",
 "Choisissez votre logement": "Choose your stay",
 "Choisissez votre logement et vos dates, envoyez votre demande en un clic : notre équipe vous répond sur WhatsApp, confirme la disponibilité et vous indique les modalités de paiement.": "Choose your stay and your dates, then send your request in one click: our team replies on WhatsApp, confirms availability and explains how to pay.",
+"Choisissez votre logement et vos dates, puis réservez et payez en ligne : confirmation immédiate, adresse et code d'accès dans votre espace la veille de l'arrivée.": "Choose your stay and your dates, then book and pay online: instant confirmation, with the address and access code in your account the day before arrival.",
 "Clair": "Light",
 "Client": "Guest",
 "Client depuis": "Customer since",
@@ -7677,6 +7690,7 @@ const EN = {
 "Jardin": "Garden",
 "Je suis propriétaire, comment proposer mon bien ?": "I'm an owner. How do I list my property?",
 "Jusqu'à l'arrivée : remboursement de": "Until arrival: refund of",
+"L'adresse exacte et le code d'accès apparaissent dans votre espace client la veille de votre arrivée.": "The exact address and the access code appear in your account the day before you arrive.",
 "L'adresse exacte et le code d'accès apparaîtront ici la veille de votre arrivée.": "The exact address and access code will appear here the day before your arrival.",
 "L'adresse exacte et le code d'accès sont communiqués uniquement au voyageur qui a réservé, après confirmation de son paiement.": "The exact address and access code are only given to the guest who booked, once their payment is confirmed.",
 "L'adresse exacte et les informations d'accès vous sont communiquées après la confirmation de votre réservation.": "The exact address and access details are sent to you once your booking is confirmed.",
@@ -7696,6 +7710,7 @@ const EN = {
 "Le Haut Atlas depuis la vallée de l'Ourika": "The High Atlas from the Ourika valley",
 "Le Haut Atlas vu des jardins de l'Agdal": "The High Atlas seen from the Agdal gardens",
 "Le délai de paiement est dépassé : les dates ont été libérées. Vous pouvez refaire une réservation.": "The payment deadline has passed: the dates have been released. You can book again.",
+"Le détail du séjour vous est présenté avant le paiement : nuits, total en dirhams, conditions d'annulation. Aucun montant n'est débité avant votre validation.": "The full breakdown is shown before payment: nights, total in dirhams and cancellation terms. Nothing is charged until you confirm.",
 "Le logement": "About this home",
 "Le logement se trouve dans ce secteur. L'adresse exacte est communiquée au voyageur après confirmation de sa réservation.": "The home is in this area. The exact address is given to the guest once the booking is confirmed.",
 "Le logement, un véhicule livré à la porte et des services organisés par notre équipe : transfert, dîner, excursions. Vous réservez tout en une fois.": "The stay, a vehicle delivered to your door and services arranged by our team: transfer, dinner, excursions. You book everything at once.",
@@ -7810,6 +7825,7 @@ const EN = {
 "Notre équipe vous confirme tout sur WhatsApp avant votre arrivée.": "Our team confirms everything on WhatsApp before your arrival.",
 "Notre équipe vous contacte avant votre arrivée pour fixer les horaires des services.": "Our team will contact you before your arrival to set the times of the services.",
 "Notre équipe vous contacte avant votre arrivée pour organiser les services inclus.": "Our team will contact you before your arrival to arrange the included services.",
+"Notre équipe vous répond par e-mail.": "Our team replies by email.",
 "Nous confirmons la réception de votre paiement de": "We confirm receipt of your payment of",
 "Nous contacter": "Contact us",
 "Nous joindre directement": "Reach us directly",
@@ -8058,6 +8074,7 @@ const EN = {
 "Une place piétonne de Guéliz": "A pedestrian square in Guéliz",
 "Une question ?": "Any questions?",
 "Une question ou un souci pendant le séjour : écrivez-nous depuis votre espace ou sur WhatsApp.": "A question or a problem during your stay? Write to us from your account or on WhatsApp.",
+"Une question, une réclamation ou un problème pendant votre séjour : écrivez-nous, notre équipe vous répond par e-mail.": "A question, a complaint or a problem during your stay? Write to us and our team will reply by email.",
 "Une question, une réclamation ou un problème pendant votre séjour : écrivez-nous, notre équipe vous répond sur WhatsApp ou par e-mail.": "A question, a complaint or a problem during your stay? Write to us and our team will reply on WhatsApp or by email.",
 "Une voiture ou une moto livrée à votre logement": "A car or motorbike delivered to your accommodation",
 "Une voiture ou une moto livrée à votre logement pour découvrir la ville et ses environs en toute liberté.": "A car or motorbike delivered to your accommodation, to explore the city and its surroundings at your own pace.",
@@ -8067,6 +8084,7 @@ const EN = {
 "Une équipe locale joignable pendant tout le séjour": "A local team you can reach throughout your stay",
 "Utiliser la remise": "Use the discount",
 "Utiliser une remise": "Redeem a discount",
+"Utilisez la page « Proposer mon bien » ou écrivez-nous : un membre de l'équipe vous recontacte pour visiter le bien.": "Use the “List my property” page or write to us: a member of the team will get in touch to visit the property.",
 "Utilisez la page « Proposer mon bien » ou écrivez-nous sur WhatsApp. Un membre de l'équipe vous recontacte pour visiter le bien.": "Use the “List my property” page or write to us on WhatsApp. A team member will get back to you to visit the property.",
 "Vidéo": "Video",
 "Villa avec piscine privée dans la Palmeraie": "Villa with private pool in the Palmeraie",

@@ -1,0 +1,5 @@
+{
+  "acces": [
+    { "bien": "b1", "adresse": "Adresse exacte du bien 1", "code": "Code de la porte", "notes": "Étage, boîte à clés, parking…" }
+  ]
+}

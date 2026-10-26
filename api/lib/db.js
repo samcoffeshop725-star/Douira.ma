@@ -10,6 +10,9 @@ const path = require('path');
 
 let pgLib = null;
 try { pgLib = require('pg'); } catch (e) { pgLib = null; }
+// Colonnes date (start_date, end_date) rendues telles quelles ('AAAA-MM-JJ'), comme pg-mini : pg les convertirait à minuit
+// heure locale du serveur, puis toISOString() les décalerait d'un jour hors UTC (accès, remboursements, calendrier)
+if (pgLib) pgLib.types.setTypeParser(1082, v => v);
 
 class MiniPool {
   constructor(url, max) { this.url = url; this.max = max; this.idle = []; this.size = 0; this.waiting = []; }
@@ -28,10 +31,14 @@ class MiniPool {
 let pool = null;
 function init(url) {
   if (!url) throw new Error('DATABASE_URL manquante');
+  // Supabase : la connexion directe db.<projet>.supabase.co n'existe qu'en IPv6, que Render ne sait pas joindre
+  if (/@db\.[a-z0-9]+\.supabase\.co/.test(url)) console.warn('DATABASE_URL : connexion directe Supabase (IPv6 seulement) ; utilisez l\'adresse du pooler (…pooler.supabase.com, port 5432).');
   const max = Math.max(2, Number(process.env.DB_POOL_MAX) || 8);
   if (pgLib) {
     const ssl = /sslmode=disable/.test(url) || /127\.0\.0\.1|localhost/.test(url) ? false : { rejectUnauthorized: false };
-    pool = new pgLib.Pool({ connectionString: url, max, ssl, statement_timeout: 15000, idleTimeoutMillis: 30000 });
+    // pg lit sslmode=require comme verify-full et refuserait le certificat de Supabase (autorité propre) : TLS reste imposé par `ssl`
+    const connectionString = url.replace(/([?&])sslmode=[^&]*(&|$)/, (m, a, b) => b ? a : '').replace(/\?$/, '');
+    pool = new pgLib.Pool({ connectionString, max, ssl, statement_timeout: 15000, idleTimeoutMillis: 30000 });
     pool.on('error', e => console.error('Base de données : connexion perdue', e.message));
   } else pool = new MiniPool(url, max);
   return pool;

@@ -1,4 +1,4 @@
-# Render · variante « site + API » : un service web Node (server.js + api/) et une base PostgreSQL.
+# Render · variante « site + API » : un service web Node (server.js + api/), base PostgreSQL chez Supabase (api/supabase/LISEZ-MOI.md).
 # À copier en render.yaml à la racine du dépôt à la place du blueprint statique quand config.js est en mode 'en-ligne'.
 services:
   - type: web
@@ -13,12 +13,14 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase: { name: douira-db, property: connectionString }
+        sync: false                     # Supabase > Session pooler (…pooler.supabase.com:5432)
       - key: DATA_KEY
         sync: false                     # générée une fois : node api/cli.js keygen ; à sauvegarder hors de Render
       - key: SITE_URL
         sync: false
       - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_INITIAL_PASSWORD
         sync: false
       - key: PSP
         value: stripe
@@ -26,7 +28,3 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
-databases:
-  - name: douira-db
-    plan: basic-256mb                   # sauvegardes quotidiennes incluses par Render ; ajouter la sauvegarde chiffrée hors site (api/cli.js backup)
-    postgresMajorVersion: "16"

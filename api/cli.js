@@ -9,6 +9,8 @@
      node api/cli.js export-user <email>           export RGPD d'un compte (JSON)
      node api/cli.js backup <dossier>              sauvegarde chiffrée (pg_dump | gzip | AES-256) avec DATA_KEY
      node api/cli.js keygen                        génère une DATA_KEY
+     node api/cli.js check                         vérifie la base (tables, verrou Supabase, administrateur, DATA_KEY)
+     node api/cli.js seed <fichier.json>           enregistre les adresses/codes des biens (voir supabase/seed.example.json)
    ===================================================================== */
 'use strict';
 const db = require('./lib/db');
@@ -41,6 +43,38 @@ async function main() {
     const gz = require('zlib').gzipSync(dump); const iv = crypto.randomBytes(12), key = Buffer.from(process.env.DATA_KEY, 'base64');
     const c = crypto.createCipheriv('aes-256-gcm', key, iv); const enc = Buffer.concat([iv, c.update(gz), c.final(), c.getAuthTag()]);
     fs.writeFileSync(out, enc, { mode: 0o600 }); console.log('Sauvegarde chiffrée : ' + out + ' (' + enc.length + ' octets)'); return;
+  }
+  if (cmd === 'check') {
+    let bad = 0; const t = (ok, msg) => { if (!ok) bad++; console.log((ok ? '  ✓ ' : '  ✗ ') + msg); };
+    const u = new URL(process.env.DATABASE_URL), v = await db.one("SELECT current_setting('server_version') AS v, current_user AS r, current_database() AS d");
+    console.log(`Base ${v.d} sur ${u.hostname}:${u.port || 5432} (PostgreSQL ${v.v}, rôle ${v.r})`);
+    if (/\.pooler\.supabase\.com$/.test(u.hostname) && u.port === '6543') console.log('  ! port 6543 (mode transaction) : préférez le port 5432 (mode session) du pooler');
+    const rls = Object.fromEntries((await db.query("SELECT c.relname, c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind = 'r'")).rows.map(r => [r.relname, r.relrowsecurity]));
+    for (const name of ['users', 'sessions', 'password_resets', 'rate_limits', 'bookings', 'payment_events', 'listing_access', 'checkins', 'audit', 'settings', 'schema_migrations']) t(rls[name] === true, `table ${name}` + (name in rls ? (rls[name] ? '' : ' : RLS désactivée') : ' absente'));
+    for (const { rolname } of (await db.query("SELECT rolname FROM pg_roles WHERE rolname IN ('anon', 'authenticated')")).rows) {
+      const g = await db.one("SELECT count(*)::int AS n FROM information_schema.role_table_grants WHERE table_schema = 'public' AND grantee = $1", [rolname]);
+      t(g.n === 0, `rôle Supabase ${rolname} : ` + (g.n ? g.n + ' droit(s) sur les tables' : 'aucun accès aux tables'));
+    }
+    const adm = await db.one("SELECT count(*)::int AS n, bool_or(must_change_password) AS pending FROM users WHERE role = 'admin' AND deleted_at IS NULL");
+    t(adm.n > 0, adm.n ? `${adm.n} administrateur(s)` + (adm.pending ? ' (mot de passe initial à changer)' : '') : 'aucun administrateur : ADMIN_EMAIL + ADMIN_INITIAL_PASSWORD au démarrage du serveur, ou create-admin');
+    let key = true; try { sec.decrypt(sec.encrypt('x')); } catch (e) { key = false; }
+    t(key, key ? 'DATA_KEY valide' : 'DATA_KEY absente ou invalide (32 octets en base64)');
+    const acc = (await db.query('SELECT listing_id, address_enc FROM listing_access ORDER BY listing_id')).rows;
+    if (key) for (const r of acc) { let ok = true; try { sec.decrypt(r.address_enc); } catch (e) { ok = false; } t(ok, `accès ${r.listing_id} ` + (ok ? 'lisible' : 'illisible : chiffré avec une autre DATA_KEY')); }
+    if (!acc.length) console.log('  · aucune adresse de bien enregistrée');
+    if (bad) throw new Error(bad + ' point(s) à corriger'); console.log('Base prête.'); return;
+  }
+  if (cmd === 'seed') {
+    // Données réelles uniquement (aucune donnée d'exemple) : adresses et codes chiffrés avec DATA_KEY, comme set-access
+    if (!a[0]) throw new Error('seed <fichier.json>');
+    const data = JSON.parse(fs.readFileSync(a[0], 'utf8')), rows = Array.isArray(data.acces) ? data.acces : [];
+    const known = new Set(require('./lib/catalog').listings().map(l => l.id));
+    for (const r of rows) {
+      const id = String(r.bien || '').trim(); if (!/^b[\w-]{1,38}$/.test(id) || !String(r.adresse || '').trim()) throw new Error('entrée invalide : ' + JSON.stringify({ bien: r.bien }) + ' (bien « b1 », « b2 »… et adresse obligatoires)');
+      if (!known.has(id)) console.warn(`  ! ${id} n'est pas (encore) dans config.js`);
+    }
+    await db.tx(async t => { for (const r of rows) await t.query('INSERT INTO listing_access (listing_id, address_enc, code_enc, notes_enc) VALUES ($1, $2, $3, $4) ON CONFLICT (listing_id) DO UPDATE SET address_enc = EXCLUDED.address_enc, code_enc = EXCLUDED.code_enc, notes_enc = EXCLUDED.notes_enc, updated_at = now()', [String(r.bien).trim(), sec.encrypt(String(r.adresse).trim()), sec.encrypt(String(r.code || '')), sec.encrypt(String(r.notes || ''))]); });
+    console.log(rows.length + ' accès enregistré(s), chiffrés. Supprimez maintenant ' + a[0] + ' (il contient les adresses en clair).'); return;
   }
   if (cmd === 'restore-decrypt') { const b = fs.readFileSync(a[0]); const key = Buffer.from(process.env.DATA_KEY, 'base64'); const d = crypto.createDecipheriv('aes-256-gcm', key, b.subarray(0, 12)); d.setAuthTag(b.subarray(-16)); process.stdout.write(require('zlib').gunzipSync(Buffer.concat([d.update(b.subarray(12, -16)), d.final()]))); return; }
   throw new Error('Commande inconnue. Voir l\'en-tête de api/cli.js');

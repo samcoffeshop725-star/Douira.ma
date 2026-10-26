@@ -16,7 +16,7 @@ window.DOUIRA_CONFIG = {
   mode: 'en-ligne',
 
   siteName: 'Douira',
-  siteUrl: 'https://douira.onrender.com',            // après l'achat du domaine, ex. 'https://www.votre-domaine.ma'
+  siteUrl: 'https://douira-tsof.onrender.com',            // après l'achat du domaine, ex. 'https://www.votre-domaine.ma'
   whatsapp: '',           // numéro qui reçoit les demandes, ex. '+212 6 12 34 56 78'
   // E-mail de l'administrateur : reçoit les demandes envoyées par e-mail et
   // s'affiche sur le site comme adresse de contact. Modifiable à tout moment :
