@@ -1,6 +1,8 @@
 # Secrets et données en clair : jamais dans le dépôt
 .env
 .env.*
+!.env.example
+!api/.env.example
 api/supabase/seed.json
 sauvegardes/
 node_modules/
