@@ -13,6 +13,7 @@
 const db = require('./lib/db');
 const sec = require('./lib/security');
 const cat = require('./lib/catalog');
+const cadmin = require('./lib/catalog_admin');
 const mail = require('./lib/mail');
 const H = require('./lib/http');
 const PSPS = { stripe: require('./psp/stripe'), cmi: require('./psp/cmi'), simulate: require('./psp/simulate') };
@@ -45,6 +46,8 @@ async function destroySession(req, res) {
   const tok = H.cookies(req)[SESSION_COOKIE]; if (tok) await db.query('DELETE FROM sessions WHERE id = $1', [sec.sha256(tok)]);
   H.setCookie(res, SESSION_COOKIE, '', { secure: H.isHttps(req), maxAge: 0 });
 }
+// Les fonctions de catalog_admin lèvent des Error munis de .status (403/404/400) ; on les relaie en HttpError.
+async function ca(fn) { try { return await fn(); } catch (e) { if (e instanceof H.HttpError) throw e; if (e && typeof e.status === 'number') throw new H.HttpError(e.status, e.message); throw e; } }
 function requireUser(ctx, role) {
   if (!ctx.session) throw new H.HttpError(401, 'Connexion requise.');
   if (role && ctx.session.role !== role) throw new H.HttpError(403, 'Accès refusé.');
@@ -284,6 +287,15 @@ R.add('POST', '/api/admin/checkin', async ctx => {
 R.add('PUT', '/api/admin/listings/:id/access', async ctx => { const a = requireCsrf(ctx); if (a.role !== 'admin') throw new H.HttpError(403, 'Accès refusé.'); const b = await H.readJson(ctx.req); await db.query('INSERT INTO listing_access (listing_id, address_enc, code_enc, notes_enc) VALUES ($1, $2, $3, $4) ON CONFLICT (listing_id) DO UPDATE SET address_enc = EXCLUDED.address_enc, code_enc = EXCLUDED.code_enc, notes_enc = EXCLUDED.notes_enc, updated_at = now()', [str(ctx.params.id, 40), sec.encrypt(str(b.address, 300)), sec.encrypt(str(b.code, 40)), sec.encrypt(str(b.notes, 500))]); audit(a.id, 'access.set', ctx.params.id, ctx.ip); return { ok: true }; });
 
 /* Réglages e-mail (Administration > E-mails) : SMTP ou Resend, secrets chiffrés, jamais renvoyés */
+/* ---------- Administration du catalogue (biens : admin/collaborateur/propriétaire ; activités : admin/agence) ---------- */
+// Les droits par rôle (et « son propre bien / sa propre activité » pour propriétaire/agence) sont appliqués dans lib/catalog_admin.
+R.add('GET', '/api/admin/catalog/listings', async ctx => { requireUser(ctx); return { listings: await ca(() => cadmin.listListings(ctx.session)) }; });
+R.add('POST', '/api/admin/catalog/listings', async ctx => { const u = requireCsrf(ctx); const body = await H.readJson(ctx.req); const l = await ca(() => cadmin.saveListing(u, body)); audit(u.id, 'listing.save', l.id, ctx.ip); return { listing: l }; });
+R.add('POST', '/api/admin/catalog/listings/:id/publish', async ctx => { const u = requireCsrf(ctx); const b = await H.readJson(ctx.req); const l = await ca(() => cadmin.publishListing(u, str(ctx.params.id, 40), !!b.publish)); audit(u.id, b.publish ? 'listing.publish' : 'listing.unpublish', l.id, ctx.ip); return { listing: l }; });
+R.add('GET', '/api/admin/catalog/activities', async ctx => { requireUser(ctx); return { activities: await ca(() => cadmin.listActivities(ctx.session)) }; });
+R.add('POST', '/api/admin/catalog/activities', async ctx => { const u = requireCsrf(ctx); const body = await H.readJson(ctx.req); const a = await ca(() => cadmin.saveActivity(u, body)); audit(u.id, 'activity.save', a.id, ctx.ip); return { activity: a }; });
+R.add('POST', '/api/admin/catalog/activities/:id/publish', async ctx => { const u = requireCsrf(ctx); const b = await H.readJson(ctx.req); const a = await ca(() => cadmin.publishActivity(u, str(ctx.params.id, 40), !!b.publish)); audit(u.id, b.publish ? 'activity.publish' : 'activity.unpublish', a.id, ctx.ip); return { activity: a }; });
+
 R.add('GET', '/api/admin/settings/mail', async ctx => { requireUser(ctx, 'admin'); return { mail: mail.publicView(await mail.config()) }; });
 R.add('PUT', '/api/admin/settings/mail', async ctx => {
   const a = requireCsrf(ctx); if (a.role !== 'admin') throw new H.HttpError(403, 'Accès refusé.');
