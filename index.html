@@ -969,6 +969,17 @@ header.top.lang-hide .lang-btn{display:none}
 .act-ag{font-size:.82rem;color:var(--muted);margin-top:1px}
 .act-ag b{color:var(--ink);font-weight:600}
 @media(max-width:480px){.act{grid-template-columns:80px 1fr}.act-img{width:80px;min-height:80px}}
+.act{cursor:pointer;transition:box-shadow .2s,transform .2s,border-color .2s}
+.act:hover{box-shadow:var(--shadow);border-color:color-mix(in srgb,var(--accent) 40%,var(--line));transform:translateY(-2px)}
+.act-pct{background:var(--accent);color:#fff;font-weight:700;font-size:.72rem;padding:2px 8px;border-radius:999px;white-space:nowrap}
+/* Mini-page d'une activité */
+.actv{display:grid;grid-template-columns:1fr;gap:24px}
+@media(min-width:800px){.actv{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}}
+.actv-media{position:relative;border-radius:18px;overflow:hidden;background:var(--surface-2);aspect-ratio:4/3}
+.actv-media img{width:100%;height:100%;object-fit:cover;display:block}
+.actv-media .actv-ph{position:absolute;inset:0;background:linear-gradient(135deg,var(--surface-2),var(--line))}
+.actv-media .act-pct{position:absolute;top:14px;left:14px;font-size:.9rem;padding:5px 12px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+@media(min-width:800px){.actv-media{position:sticky;top:90px}}
 /* =====================================================================
    Thème « Douira 2026 » : organisation et composants inspirés des applications
    de lifestyle (Privilee) : fond blanc, typographie géométrique légère, boutons
@@ -1641,6 +1652,7 @@ function seed() {
     seq: { booking: 2400, ticket: 1040 },
     session: { userId: null },
     activities: [],
+    redemptions: [],
     settings: {
       siteName: 'Douira', brand: 'desert', themeDesert: 1, adminEmail: ADMIN_EMAIL, contactEmail: 'contact@douira.example', whatsapp: '+212 6 00 00 00 00',
       serviceFeePct: 0, markupPct: 12.5, showPctToClients: false, cleaningTariff: { apartments: 125, villas: 125 }, defaultCommission: 15, payoutDelayHours: 24, holdMinutes: 15, accessCodeMode: 'confirmation', accessCodeHours: 48, touristTax: 0, reviewWindowDays: 14, cities: ['Marrakech'],
@@ -1735,24 +1747,29 @@ const fmtDist = km => km < 0.5 ? 'moins de 500 m' : km < 1 ? '≈ ' + (Math.roun
 const walkMin = km => Math.max(1, Math.round(km * 1.3 / 4.5 * 60));
 function nearbyActivities(l, radiusKm) {
   if (!l || !l.geo || !Array.isArray(S.activities) || !S.activities.length) return [];
-  let r = S.activities.filter(a => a.geo).map(a => ({ a, km: kmBetween(l.geo, a.geo) })).filter(x => isFinite(x.km));
+  let r = S.activities.filter(a => a.geo && a.status !== 'draft').map(a => ({ a, km: kmBetween(l.geo, a.geo) })).filter(x => isFinite(x.km));
   if (radiusKm) r = r.filter(x => x.km <= radiusKm);
   return r.sort((x, y) => x.km - y.km);
 }
+const activity = id => (S.activities || []).find(a => a.id === id) || null;
+const agencyActivities = uid => (S.activities || []).filter(a => a.agenceId === uid);
+// Nom et description de l'agence d'une activité (depuis le compte agence si lié, sinon champs texte).
+const actAgency = a => { const u = a && a.agenceId ? user(a.agenceId) : null; return { id: a && a.agenceId, name: u ? u.name : (a && a.agence || ''), desc: u ? (u.description || '') : (a && a.agenceDesc || '') }; };
+const pctBadge = pct => pct ? `<span class="act-pct">−${pct} %</span>` : '';
 function activitiesSection(l) {
   const near = nearbyActivities(l);
   if (!near.length) return '';
   const cats = [...new Set(near.map(x => x.a.cat))];
-  const item = ({ a, km }) => `<li class="act${a.photo ? '' : ' noimg'}">
+  const item = ({ a, km }) => { const ag = actAgency(a); return `<li class="act${a.photo ? '' : ' noimg'}" data-act="go" data-to="activity" data-id="${a.id}" role="link" tabindex="0">
     ${a.photo ? `<img class="act-img" src="${esc(a.photo)}" alt="" loading="lazy">` : ''}
     <div class="act-b">
-      <div class="act-h"><b>${esc(a.name)}</b> ${pill([ACT_CATEGORIES[a.cat] || a.cat, ''])}</div>
+      <div class="act-h"><b>${esc(a.name)}</b> ${pill([ACT_CATEGORIES[a.cat] || a.cat, ''])}${pctBadge(a.pct)}</div>
       <div class="small muted">${fmtDist(km)}${km < 3 ? ' · ' + walkMin(km) + ' min à pied' : ''}${a.price > 0 ? ' · à partir de ' + mad(a.price) : a.price === 0 ? ' · gratuit' : ''}</div>
       ${a.note ? `<div class="small">${esc(a.note)}</div>` : ''}
-      ${a.agence ? `<div class="act-ag"><b>${esc(a.agence)}</b>${a.agenceDesc ? ' — ' + esc(a.agenceDesc) : ''}</div>` : ''}
-      <a class="btn-link small" href="https://www.google.com/maps/search/?api=1&query=${a.geo.lat}%2C${a.geo.lng}" target="_blank" rel="noopener">Voir sur la carte</a>
-    </div></li>`;
-  return `<p class="small muted">Autour du logement, à titre indicatif (distances à vol d'oiseau depuis le secteur).</p>
+      ${ag.name ? `<div class="act-ag"><b>${esc(ag.name)}</b></div>` : ''}
+      <span class="btn-link small">Voir le parcours${a.pct ? ' et le −' + a.pct + ' %' : ''} →</span>
+    </div></li>`; };
+  return `<p class="small muted">Autour du logement, à titre indicatif. Réductions membres à activer sur place auprès de l'agence.</p>
     <div class="actcats">${cats.map(c => `<span class="pill">${esc(ACT_CATEGORIES[c] || c)}</span>`).join(' ')}</div>
     <ul class="actlist">${near.slice(0, 10).map(item).join('')}</ul>`;
 }
@@ -2365,17 +2382,18 @@ VIEWS.legal = p => {
 const NAV = {
   client: [['c_bookings', 'Mes réservations'], ['c_favs', 'Favoris et voyages'], ['c_reviews', 'Mes avis'], ['c_tickets', 'Messages et réclamations'], ['c_inbox', 'Mes e-mails'], ['c_profile', 'Mon profil']],
   owner: [['o_dash', 'Tableau de bord'], ['o_props', 'Mes biens'], ['o_bookings', 'Réservations'], ['o_reviews', 'Avis et notes'], ['o_earnings', 'Mes gains'], ['o_cleaning', 'Ménage'], ['o_commission', 'Commission'], ['o_tickets', 'Messages et réclamations'], ['o_inbox', 'Mes e-mails']],
+  agency: [['ag_dash', 'Tableau de bord'], ['ag_activities', 'Mes activités'], ['ag_redeem', 'Activer une promo'], ['ag_redemptions', 'Promos activées']],
   team: [{ grp: 'Activité' }, ['t_dash', 'Tableau de bord'], ['t_requests', 'Demandes propriétaires', 'requests.manage'], ['t_listings', 'Annonces', 'listings.manage'], ['t_bookings', 'Réservations', 'bookings.view'],
     ['t_tickets', 'Messagerie et réclamations', 'tickets.manage'], ['t_extras', 'Extras et calendrier', 'extras.manage'], ['t_reviews', 'Avis et notes', 'reviews.manage'], ['t_directory', 'Propriétaires et clients', 'directory.view'], ['t_inbox', 'Mes e-mails'],
     { grp: 'Finance' }, ['t_payouts', 'Versements', 'payouts.manage'], ['t_providers', 'Ménage et commissions', 'providers.manage'],
     { grp: 'Administration' }, ['t_categories', 'Catégories', 'categories.manage'], ['t_users', 'Comptes et rôles', 'users.manage'], ['t_content', 'Contenu du site', 'content.manage'],
     ['t_settings', 'Paramètres et thème', 'settings.manage'], ['t_emails', 'Journal des e-mails', 'emails.view'], ['t_audit', "Journal d'audit", 'audit.view']]
 };
-const DETAIL_PARENT = { c_booking: 'c_bookings', c_ticket: 'c_tickets', c_email: 'c_inbox', o_prop: 'o_props', o_ticket: 'o_tickets', o_email: 'o_inbox', t_listing: 't_listings', t_booking: 't_bookings', t_ticket: 't_tickets', t_email: 't_inbox', t_logemail: 't_emails' };
+const DETAIL_PARENT = { c_booking: 'c_bookings', c_ticket: 'c_tickets', c_email: 'c_inbox', o_prop: 'o_props', o_ticket: 'o_tickets', o_email: 'o_inbox', ag_activity: 'ag_activities', t_listing: 't_listings', t_booking: 't_bookings', t_ticket: 't_tickets', t_email: 't_inbox', t_logemail: 't_emails' };
 const TAB_PERM = { t_listing: 'listings.manage', t_booking: 'bookings.view', t_ticket: 'tickets.manage', t_logemail: 'emails.view' };
 const SPACE = {};
 
-function navFor(r) { return r === 'client' ? NAV.client : r === 'owner' ? NAV.owner : NAV.team; }
+function navFor(r) { return r === 'client' ? NAV.client : r === 'owner' ? NAV.owner : r === 'agency' ? NAV.agency : NAV.team; }
 function navCount(tab) {
   const u = me();
   switch (tab) {
@@ -2679,6 +2697,56 @@ SPACE.o_tickets = () => `${head('Messages et réclamations', 'Échangez avec l\'
 SPACE.o_ticket = p => myTicketDetail(p, 'o_tickets');
 SPACE.o_inbox = () => `${head('Mes e-mails')}${inboxList('o_email')}`;
 SPACE.o_email = p => emailDetail(p, 'o_inbox');
+
+/* ---------- Espace agence (activités à proximité) ---------- */
+SPACE.ag_dash = () => {
+  const u = me(), acts = agencyActivities(u.id), reds = S.redemptions.filter(r => r.agenceId === u.id);
+  return `${head('Bonjour ' + firstName(u.name), u.description || 'Gérez vos activités et vos réductions membres.', '<button class="btn btn-p btn-s" data-act="go" data-to="space" data-tab="ag_activity" data-id="new">Nouvelle activité</button>')}
+    <div class="kpis">${kpi('Activités publiées', `${acts.filter(a => a.status === 'published').length}<span class="muted" style="font-size:.6em"> / ${acts.length}</span>`)}${kpi('Promos activées', reds.length)}${kpi('Réduction moyenne', acts.length ? '−' + Math.round(acts.reduce((s, a) => s + (a.pct || 0), 0) / acts.length) + ' %' : '—')}</div>
+    <div class="panel"><div class="panel-h"><h3>Dernières promos activées</h3>${btnGo('Tout voir', 'space', { tab: 'ag_redemptions' })}</div>${table(['Date', 'Activité', 'Client', '>Réduction'], reds.slice(0, 5).map(r => `<tr><td class="num">${fmtDT(r.at)}</td><td>${esc((activity(r.activityId) || {}).name || '—')}</td><td>${esc(shortName((user(r.clientId) || {}).name || '—'))}</td><td class="r">−${r.pct} %</td></tr>`), 'Aucune promo activée pour le moment.')}</div>`;
+};
+SPACE.ag_activities = () => {
+  const acts = agencyActivities(me().id);
+  return `${head('Mes activités', 'Créez, modifiez et publiez vos activités. Une réduction membre en % est obligatoire.', '<button class="btn btn-p btn-s" data-act="go" data-to="space" data-tab="ag_activity" data-id="new">Nouvelle activité</button>')}
+    ${table(['Activité', 'Catégorie', '>Réduction', 'Statut', 'Actions'], acts.map(a => `<tr><td><b>${esc(a.name)}</b>${a.note ? `<div class="small muted">${esc(a.note)}</div>` : ''}</td><td>${esc(ACT_CATEGORIES[a.cat] || a.cat)}</td><td class="r">${a.pct ? '−' + a.pct + ' %' : '—'}</td><td>${pill(a.status === 'published' ? ['Publiée', 'ok'] : ['Brouillon', ''])}</td><td><div class="row" style="gap:6px">${btnGo('Modifier', 'space', { tab: 'ag_activity', id: a.id })}<button class="btn btn-g btn-s" data-act="activityToggle" data-id="${a.id}">${a.status === 'published' ? 'Retirer' : 'Publier'}</button></div></td></tr>`), 'Aucune activité. Créez-en une.')}`;
+};
+SPACE.ag_activity = p => {
+  const u = me(), isNew = p.id === 'new';
+  const a = isNew ? { id: 'new', name: '', cat: 'culture', price: '', pct: '', note: '', parcours: '', photo: '', geo: null, status: 'draft' } : activity(p.id);
+  if (!a || (!isNew && a.agenceId !== u.id)) return '<div class="empty">Activité introuvable.</div>';
+  return `${back('ag_activities', 'Mes activités')}${head(isNew ? 'Nouvelle activité' : 'Modifier l\'activité', isNew ? '' : esc(a.name))}
+    <form class="stack" data-form="activitySave" data-id="${esc(a.id)}">
+      <fieldset class="fgrid"><legend>Présentation</legend>
+        ${field('Nom', `<input name="name" required maxlength="80" value="${esc(a.name)}">`, '', 'full')}
+        ${field('Catégorie', `<select name="cat">${Object.entries(ACT_CATEGORIES).map(([k, v]) => opt(k, v, a.cat)).join('')}</select>`)}
+        ${field('Réduction membre (%)', `<input type="number" name="pct" min="1" max="90" required value="${esc(a.pct || '')}">`, 'Obligatoire : la réduction accordée aux membres Douira.')}
+        ${field('Prix indicatif (MAD)', `<input type="number" name="price" min="0" value="${esc(a.price || '')}">`, '0 ou vide = gratuit')}
+        ${field('Résumé court', `<input name="note" maxlength="120" value="${esc(a.note || '')}">`, '', 'full')}
+        ${field('Parcours (ce que vit le client)', `<textarea name="parcours">${esc(a.parcours || '')}</textarea>`, '', 'full')}
+        ${field('Photo (fichier du dossier photos/)', `<input name="photo" value="${esc(a.photo || '')}" placeholder="photos/mon-activite.jpg">`, '', 'full')}
+      </fieldset>
+      <fieldset class="fgrid"><legend>Position et publication</legend>
+        ${field('Latitude', `<input name="lat" inputmode="decimal" value="${esc(a.geo ? a.geo.lat : '')}" placeholder="31.63">`)}
+        ${field('Longitude', `<input name="lng" inputmode="decimal" value="${esc(a.geo ? a.geo.lng : '')}" placeholder="-8.01">`)}
+        ${field('Statut', `<select name="status">${opt('draft', 'Brouillon', a.status)}${opt('published', 'Publiée', a.status)}</select>`)}
+      </fieldset>
+      <div class="row"><button class="btn btn-p" type="submit">Enregistrer</button>${btnGo('Annuler', 'space', { tab: 'ag_activities' }, 'btn btn-g')}</div>
+    </form>`;
+};
+SPACE.ag_redeem = () => {
+  const acts = agencyActivities(me().id).filter(a => a.status === 'published' && a.pct);
+  return `${head('Activer une promo', 'Scannez la carte de membre du client (QR) ou cherchez son nom / numéro de membre, puis activez sa réduction.')}
+    ${acts.length ? `<form class="panel stack" data-form="redeemPromo">
+      ${field('Activité', `<select name="activityId" required>${acts.map(a => opt(a.id, `${a.name} (−${a.pct} %)`, '')).join('')}</select>`)}
+      ${field('Client (nom ou numéro de membre)', `<input name="client" required placeholder="Ex. Sophie Martin ou 100021" autocomplete="off">`, 'Le QR de la carte de membre contient ce numéro.')}
+      <div class="row"><button class="btn btn-p" type="submit">Activer la promotion</button></div>
+    </form>` : '<div class="empty">Publiez au moins une activité avec une réduction pour activer des promos.</div>'}`;
+};
+SPACE.ag_redemptions = () => {
+  const reds = S.redemptions.filter(r => r.agenceId === me().id);
+  return `${head('Promos activées', 'Historique des réductions activées pour vos clients.')}
+    ${table(['Date', 'Activité', 'Client', '>Réduction'], reds.map(r => `<tr><td class="num">${fmtDT(r.at)}</td><td>${esc((activity(r.activityId) || {}).name || '—')}</td><td>${esc((user(r.clientId) || {}).name || '—')}</td><td class="r">−${r.pct} %</td></tr>`), 'Aucune promo activée.')}`;
+};
 
 
 /* =====================================================================
@@ -3204,6 +3272,43 @@ A.ownerSwitchMode = d => {
   l.managementMode = isAutonome(l) ? 'delegue' : 'autonome';
   audit('Mode de gestion changé par le propriétaire', `${l.title} → ${MGMT_MODES[mgmtMode(l)][0]}`);
   toast(`Ce bien est maintenant en ${MGMT_MODES[mgmtMode(l)][0].toLowerCase()}.`);
+  render();
+};
+// --- Espace agence : activités et activation des promotions ---
+F.activitySave = (data, form) => {
+  const u = me(); if (!u || u.role !== 'agency') return toast('Action non autorisée.', true);
+  const id = form.dataset.id;
+  const pct = Math.max(0, Math.min(90, Math.round(Number(data.pct || 0))));
+  if (!(data.name || '').trim()) return toast('Le nom est obligatoire.', true);
+  if (!pct) return toast('La réduction en pourcentage est obligatoire.', true);
+  const lat = Number(data.lat), lng = Number(data.lng);
+  const geo = (isFinite(lat) && isFinite(lng) && lat && lng) ? { lat, lng } : null;
+  if (!geo) return toast('Indiquez la position (latitude et longitude).', true);
+  const o = { name: data.name.trim(), cat: ACT_CATEGORIES[data.cat] ? data.cat : 'culture', price: Number(data.price || 0) || undefined, pct, note: (data.note || '').trim(), parcours: (data.parcours || '').trim(), photo: (data.photo || '').trim(), geo, agenceId: u.id, status: data.status === 'published' ? 'published' : 'draft' };
+  if (id === 'new') { o.id = uid('a'); S.activities.unshift(o); audit('Activité créée', o.name); }
+  else { const a = activity(id); if (!a || a.agenceId !== u.id) return toast('Action non autorisée.', true); Object.assign(a, o); audit('Activité modifiée', o.name); }
+  toast('Activité enregistrée.'); go('space', { tab: 'ag_activities' });
+};
+A.activityToggle = d => {
+  const u = me(), a = activity(d.id); if (!u || !a || a.agenceId !== u.id) return toast('Action non autorisée.', true);
+  a.status = a.status === 'published' ? 'draft' : 'published';
+  audit(a.status === 'published' ? 'Activité publiée' : 'Activité retirée', a.name);
+  toast(a.status === 'published' ? 'Activité publiée.' : 'Activité retirée du site.'); render();
+};
+F.redeemPromo = (data, form) => {
+  const u = me(); if (!u || u.role !== 'agency') return toast('Action non autorisée.', true);
+  const act = activity(data.activityId); if (!act || act.agenceId !== u.id) return toast('Activité invalide.', true);
+  const q = (data.client || '').trim(); if (!q) return toast('Indiquez le nom ou le numéro de membre.', true);
+  const clients = S.users.filter(x => x.role === 'client' && x.status === 'actif');
+  let match = clients.filter(x => String(x.memberNo || '') === q);
+  if (!match.length) match = clients.filter(x => x.name.toLowerCase().includes(q.toLowerCase()));
+  if (!match.length) return toast(`Aucun client trouvé pour « ${q} ».`, true);
+  if (match.length > 1) return toast('Plusieurs clients correspondent : précisez le numéro de membre.', true);
+  const cli = match[0];
+  S.redemptions.unshift({ id: uid('rd'), activityId: act.id, agenceId: u.id, clientId: cli.id, pct: act.pct, at: nowIso() });
+  audit('Promotion activée', `${act.name} · ${cli.name}`);
+  if (form) form.reset();
+  openModal(`<h2>Promotion activée</h2><p>Réduction <b>−${act.pct} %</b> activée pour <b>${esc(firstName(cli.name))}</b> sur « ${esc(act.name)} ».</p><div><button class="btn btn-p" data-act="closeModal">Fermer</button></div>`);
   render();
 };
 A.revealTeam = d => {
@@ -4751,6 +4856,7 @@ function vitrineState() {
     id: 'a' + (a.id || i + 1), name: a.nom || 'Activité', cat: ACT_CATEGORIES[a.categorie] ? a.categorie : 'culture',
     geo: a.position && a.position.lat ? { lat: Number(a.position.lat), lng: Number(a.position.lng) } : null,
     price: (a.prix === 0 || a.prix) ? Number(a.prix) : undefined, note: a.note || '',
+    pct: Math.max(0, Math.min(90, Math.round(Number(a.reduction || 0)))) || undefined, parcours: a.parcours || '', status: 'published',
     photo: typeof a.photo === 'string' ? a.photo : '', agence: a.agence || '', agenceDesc: a.agenceDesc || ''
   })).filter(a => a.geo);
   S.users = []; S.bookings = []; S.emails = []; S.tickets = []; S.requests = []; S.audit = []; S.reviews = []; S.favLists = []; S.cleaners = [];
@@ -6228,6 +6334,28 @@ lcard = function (l) {
   if (R.name !== 'search' || !R.p.start || !R.p.end || diffDays(R.p.start, R.p.end) < 1) return h;
   const free = isAvailable(l.id, R.p.start, R.p.end);
   return h.replace(/(<div class="ph"[^>]*>)/, `$1<span class="lstate${free ? '' : ' full'}"><i></i>${free ? 'Disponible' : 'Complet'}</span>`);
+};
+
+/* ---------- Mini-page d'une activité à proximité ---------- */
+VIEWS.activity = p => {
+  const a = typeof activity === 'function' ? activity(p.id) : null;
+  if (!a || a.status === 'draft') return `<div class="gutter"><div class="wrap" style="padding-block:40px"><div class="empty">Cette activité n'est pas disponible.</div></div></div>`;
+  const ag = actAgency(a), u = me();
+  return `<div class="gutter"><div class="wrap stack-l" style="padding-block:14px 44px">
+    <nav class="crumbs small" aria-label="Fil d'Ariane"><button data-act="back">← Retour</button></nav>
+    <div class="actv">
+      <div class="actv-media">${a.photo ? `<img src="${esc(a.photo)}" alt="${esc(a.name)}">` : '<div class="actv-ph"></div>'}${pctBadge(a.pct)}</div>
+      <div class="actv-body stack">
+        <div><span class="pill">${esc(ACT_CATEGORIES[a.cat] || a.cat)}</span></div>
+        <h1 style="font-size:clamp(1.6rem,3vw,2.3rem)">${esc(a.name)}</h1>
+        ${a.note ? `<p class="lead">${esc(a.note)}</p>` : ''}
+        ${a.price ? `<p><b class="num" style="font-size:1.2rem">${mad(a.price)}</b> <span class="muted">par personne (indicatif)</span>${a.pct ? ` · <b style="color:var(--accent)">−${a.pct} % membres</b>` : ''}</p>` : a.pct ? `<p><b style="color:var(--accent);font-size:1.1rem">−${a.pct} % membres</b></p>` : ''}
+        ${a.parcours ? `<div class="panel stack-s"><h3>Votre parcours</h3><p>${esc(a.parcours)}</p></div>` : ''}
+        ${ag.name ? `<div class="panel stack-s"><h3>Proposé par ${esc(ag.name)}</h3>${ag.desc ? `<p class="small muted">${esc(ag.desc)}</p>` : ''}</div>` : ''}
+        ${a.pct ? `<div class="note info"><b>Votre réduction de −${a.pct} %.</b> Présentez votre carte de membre Douira à l'agence sur place : elle scanne votre QR (ou cherche votre nom) pour activer votre promotion.${u && u.role === 'client' ? '' : ' Créez un compte pour obtenir votre carte de membre.'}</div>` : ''}
+        <div class="row">${a.geo ? `<a class="btn btn-g" href="https://www.google.com/maps/search/?api=1&query=${a.geo.lat}%2C${a.geo.lng}" target="_blank" rel="noopener">Voir sur la carte</a>` : ''}</div>
+      </div>
+    </div></div></div>`;
 };
 
 /* ---------- Fiche d'un logement ---------- */
