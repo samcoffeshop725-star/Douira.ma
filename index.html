@@ -1008,16 +1008,18 @@ header.top.lang-hide .lang-btn{display:none}
    garde cette charte.
    ===================================================================== */
 :root, :root[data-brand="desert"], :root[data-brand="zellige"], :root[data-brand="majorelle"]{
-  --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F7F1E8; --line:#E8DED2; --ink:#2B1E1C; --muted:#6B5A52;
-  --accent:#A8432A; --accent-ink:#FFFFFF; --accent-soft:#F5DED2;          /* terracotta */
-  --majorelle:#3B46B8; --majorelle-2:#2E3A8C; --majorelle-soft:#E4E6F8;   /* bleu Majorelle */
+  /* Charte « Zellige jewel » : mosaïque marocaine — vert émeraude (principal), bleu zellige, terracotta, safran, fond crème */
+  --bg:#FBF7EF; --surface:#FFFFFF; --surface-2:#F4EDDF; --line:#E7DBC6; --ink:#241C22; --muted:#6E6153;
+  --accent:#1F6B52; --accent-ink:#FFFFFF; --accent-soft:#D7E9E0;           /* vert émeraude (zellige) */
+  --terra:#B0472C; --terra-soft:#F6DED3;                                    /* terracotta */
+  --majorelle:#2E5AA8; --majorelle-2:#213F78; --majorelle-soft:#DFE8F6;    /* bleu zellige */
   --ocre:#A8652A; --ocre-soft:#F3E4D0;                                     /* ocre */
   --safran:#E0A526;                                                         /* safran : décor, grands titres */
-  --slate:var(--majorelle); --slate-2:var(--majorelle-2); --sand:#F7F1E8; --sand-2:var(--ocre); --dark:#2B1E1C;
+  --slate:#15463A; --slate-2:#1F6B52; --sand:#F4EDDF; --sand-2:var(--ocre); --dark:#1E2B27;
   --gold:#8F5E0F; --gold-soft:#FBEBC7;                                      /* safran foncé (texte), safran clair (fond) */
-  --ok:#2E6B4F; --ok-soft:#DDEEDF;                                          /* vert jardin */
-  --night:var(--majorelle-2); --night-ink:#FFFFFF; --night-muted:#CFD5F0;
-  --sea:#D6E4EE; --land:#F3E9DA; --land-line:#DCC6AA; --pin:#A8432A; --pin-ink:#FFFFFF;
+  --ok:#1F6B52; --ok-soft:#D7E9E0;                                          /* vert jardin */
+  --night:#15463A; --night-ink:#FFFFFF; --night-muted:#CFE0D6;
+  --sea:#CFE2DC; --land:#F3E9DA; --land-line:#DCC6AA; --pin:#B0472C; --pin-ink:#FFFFFF;
   --shadow:0 1px 2px rgba(43,30,28,.06),0 8px 28px rgba(43,30,28,.1);
   --f-display:"Outfit",system-ui,sans-serif;
   --f-body:"Outfit",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -1026,24 +1028,26 @@ header.top.lang-hide .lang-btn{display:none}
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]), :root[data-brand]:not([data-theme="light"]){
-    --bg:#17141A; --surface:#201C22; --surface-2:#2A252B; --line:#3B343B; --ink:#F2E7D8; --muted:#B6AA9E;
-    --accent:#EE9C74; --accent-ink:#2A0D04; --accent-soft:#46271F;
-    --majorelle:#8F9BF2; --majorelle-2:#1E2560; --majorelle-soft:#252C55; --ocre:#C98A4F; --ocre-soft:#3B2E17;
-    --slate:#1E2560; --slate-2:#8F9BF2; --sand:#201C22; --sand-2:#5A3D23; --dark:#0F0D10;
-    --gold:#E5B65E; --gold-soft:#3B2E17; --ok:#6CC48A; --ok-soft:#183324;
-    --night:#1E2560; --night-muted:#B9C2D1; --chip:#201C22; --chip-ink:#F2E7D8;
-    --sea:#1A2430; --land:#2A2622; --land-line:#4A4038; --pin:#EE9C74; --pin-ink:#2A0D04;
+    --bg:#141019; --surface:#1E1822; --surface-2:#2A2230; --line:#3A3040; --ink:#F0E6D8; --muted:#B4A596;
+    --accent:#4FBF95; --accent-ink:#06241A; --accent-soft:#163428;
+    --terra:#EE9C74; --terra-soft:#43281F;
+    --majorelle:#8AA6E8; --majorelle-2:#1B2F57; --majorelle-soft:#233253; --ocre:#C98A4F; --ocre-soft:#3B2E17;
+    --slate:#10362B; --slate-2:#4FBF95; --sand:#1E1822; --sand-2:#5A3D23; --dark:#0C120F;
+    --gold:#E5B65E; --gold-soft:#3B2E17; --ok:#4FBF95; --ok-soft:#163428;
+    --night:#10362B; --night-muted:#BCD2C8; --chip:#1E1822; --chip-ink:#F0E6D8;
+    --sea:#14241E; --land:#2A2622; --land-line:#4A4038; --pin:#EE9C74; --pin-ink:#2A0D04;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.38);
   }
 }
 :root[data-theme="dark"], :root[data-theme="dark"][data-brand]{
-  --bg:#17141A; --surface:#201C22; --surface-2:#2A252B; --line:#3B343B; --ink:#F2E7D8; --muted:#B6AA9E;
-  --accent:#EE9C74; --accent-ink:#2A0D04; --accent-soft:#46271F;
-  --majorelle:#8F9BF2; --majorelle-2:#1E2560; --majorelle-soft:#252C55; --ocre:#C98A4F; --ocre-soft:#3B2E17;
-  --slate:#1E2560; --slate-2:#8F9BF2; --sand:#201C22; --sand-2:#5A3D23; --dark:#0F0D10;
-  --gold:#E5B65E; --gold-soft:#3B2E17; --ok:#6CC48A; --ok-soft:#183324;
-  --night:#1E2560; --night-muted:#B9C2D1; --chip:#201C22; --chip-ink:#F2E7D8;
-  --sea:#1A2430; --land:#2A2622; --land-line:#4A4038; --pin:#EE9C74; --pin-ink:#2A0D04;
+  --bg:#141019; --surface:#1E1822; --surface-2:#2A2230; --line:#3A3040; --ink:#F0E6D8; --muted:#B4A596;
+  --accent:#4FBF95; --accent-ink:#06241A; --accent-soft:#163428;
+  --terra:#EE9C74; --terra-soft:#43281F;
+  --majorelle:#8AA6E8; --majorelle-2:#1B2F57; --majorelle-soft:#233253; --ocre:#C98A4F; --ocre-soft:#3B2E17;
+  --slate:#10362B; --slate-2:#4FBF95; --sand:#1E1822; --sand-2:#5A3D23; --dark:#0C120F;
+  --gold:#E5B65E; --gold-soft:#3B2E17; --ok:#4FBF95; --ok-soft:#163428;
+  --night:#10362B; --night-muted:#BCD2C8; --chip:#1E1822; --chip-ink:#F0E6D8;
+  --sea:#14241E; --land:#2A2622; --land-line:#4A4038; --pin:#EE9C74; --pin-ink:#2A0D04;
 }
 
 /* Accessibilité : lien d'évitement (visible au clavier) et focus visible */
@@ -1461,6 +1465,48 @@ footer.foot .social span{width:34px;height:34px;border-radius:50%;border:1px sol
   .mcard .av{width:64px;height:64px;grid-row:auto}
   .staycard .brandw{grid-column:1/-1;order:-1}
 }
+
+/* ===================================================================
+   Motifs marocains (zellige + arches) — thème « Zellige jewel »
+   Filigrane géométrique (étoile à 8 branches = deux carrés superposés),
+   ornements de titres et images en arche mauresque. Décoratif : posé en
+   couches pseudo-éléments, il ne gêne ni la lecture ni la mise en page.
+   =================================================================== */
+:root{
+  /* Filigrane zellige (contour), safran — pour les fonds sombres */
+  --zellige-gold:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%23E0A526' stroke-width='1.1'%3E%3Crect x='8' y='8' width='24' height='24'/%3E%3Cpath d='M20 4 36 20 20 36 4 20Z'/%3E%3C/g%3E%3C/svg%3E");
+  /* Filigrane zellige très discret (pour le héros, posé sur une photo) */
+  --zellige-faint:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%23F0D28A' stroke-width='1' stroke-opacity='0.16'%3E%3Crect x='8' y='8' width='24' height='24'/%3E%3Cpath d='M20 4 36 20 20 36 4 20Z'/%3E%3C/g%3E%3C/svg%3E");
+  /* Étoile pleine (ornement de titre), terracotta */
+  --zellige-star:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='%23B0472C'%3E%3Crect x='9' y='9' width='22' height='22'/%3E%3Crect x='9' y='9' width='22' height='22' transform='rotate(45 20 20)'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Héros : filigrane zellige très discret par-dessus le dégradé (sous le texte) + liseré zellige en bas */
+.hero-v .shade{background-image:var(--zellige-faint),linear-gradient(180deg,rgba(0,0,0,.4) 0%,rgba(0,0,0,.14) 40%,rgba(0,0,0,.6) 100%);background-size:60px,auto;background-repeat:repeat,no-repeat}
+.hero-v::after{content:"";position:absolute;left:0;right:0;bottom:0;height:14px;background:var(--slate) var(--zellige-gold) repeat-x center/14px;z-index:3;pointer-events:none}
+
+/* Pied de page : filigrane zellige discret */
+footer.foot{position:relative}
+footer.foot::before{content:"";position:absolute;inset:0;background:var(--zellige-gold) repeat;background-size:46px;opacity:.10;pointer-events:none;z-index:0}
+footer.foot>*{position:relative;z-index:1}
+
+/* Bandeau « confiance » (fond sombre) : même filigrane */
+.trust{position:relative}
+.trust::before{content:"";position:absolute;inset:0;background:var(--zellige-gold) repeat;background-size:44px;opacity:.09;pointer-events:none;z-index:0}
+.trust>*{position:relative;z-index:1}
+
+/* Ornement d'étoile zellige au-dessus des grands titres de section */
+.sec-title::before,.sec-head.center h2::before{content:"";display:block;width:30px;height:30px;margin:0 auto 12px;background:var(--zellige-star) center/contain no-repeat;opacity:.95}
+
+/* Images d'histoire en arche mauresque (dôme adouci en haut) */
+.alt-img{border-top-left-radius:110px;border-top-right-radius:110px}
+
+/* Filet zellige décoratif : bande fine réutilisable (ex. sous une section) */
+.zellige-band{height:14px;background:var(--accent);position:relative;overflow:hidden}
+.zellige-band::before{content:"";position:absolute;inset:0;background:var(--zellige-gold) repeat-x center/18px;opacity:.5}
+
+/* Liens/puces : petite étoile zellige en puce décorative là où c'est pertinent */
+.cat-chip[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--safran)}
 
 </style>
 </head>
