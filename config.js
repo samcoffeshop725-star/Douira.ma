@@ -77,7 +77,7 @@ window.DOUIRA_CONFIG = {
       reglement: 'Logement non-fumeur. Fêtes non autorisées. Calme après 22 h.',
       arrivee: '15:00', depart: '11:00', annulation: 'moderee', modeGestion: 'autonome',
       numeroAutorisation: '',
-      photos: ['photos/appart-salon-1.jpg'],
+      photos: ['photos/appart-salon-1.jpg?v=2'],
       positionApprox: { lat: 31.63702, lng: -8.01048 },
       diamond: false,
       remise: { pourcentage: 0, libelle: '', du: '', au: '' }
@@ -92,7 +92,7 @@ window.DOUIRA_CONFIG = {
       reglement: 'Logement non-fumeur. Fêtes non autorisées.',
       arrivee: '15:00', depart: '11:00', annulation: 'stricte', modeGestion: 'delegue',
       numeroAutorisation: '',
-      photos: ['photos/appart-salon-2.jpg'],
+      photos: ['photos/appart-salon-2.jpg?v=2'],
       positionApprox: { lat: 31.62154, lng: -8.01497 },
       diamond: false,
       remise: { pourcentage: 20, libelle: "Offre d'automne", du: '', au: '' }
@@ -107,7 +107,7 @@ window.DOUIRA_CONFIG = {
       reglement: 'Logement non-fumeur.',
       arrivee: '15:00', depart: '11:00', annulation: 'flexible', modeGestion: 'autonome',
       numeroAutorisation: '',
-      photos: ['photos/appart-salon-1.jpg'],
+      photos: ['photos/appart-salon-1.jpg?v=2'],
       positionApprox: { lat: 31.63051, lng: -8.01684 },
       diamond: false,
       remise: { pourcentage: 0, libelle: '', du: '', au: '' }
@@ -122,7 +122,7 @@ window.DOUIRA_CONFIG = {
       reglement: 'Logement non-fumeur. Fêtes non autorisées.',
       arrivee: '15:00', depart: '11:00', annulation: 'moderee', modeGestion: 'delegue',
       numeroAutorisation: '',
-      photos: ['photos/appart-salon-2.jpg'],
+      photos: ['photos/appart-salon-2.jpg?v=2'],
       positionApprox: { lat: 31.60452, lng: -7.99048 },
       diamond: false,
       remise: { pourcentage: 0, libelle: '', du: '', au: '' }
@@ -137,7 +137,7 @@ window.DOUIRA_CONFIG = {
       reglement: 'Logement non-fumeur. Calme après 22 h.',
       arrivee: '15:00', depart: '11:00', annulation: 'moderee', modeGestion: 'delegue',
       numeroAutorisation: '',
-      photos: ['photos/riad-patio.jpg', 'photos/riad-cour.jpg'],
+      photos: ['photos/riad-patio.jpg?v=2', 'photos/riad-cour.jpg?v=2'],
       positionApprox: { lat: 31.62303, lng: -7.98702 },
       diamond: false,
       remise: { pourcentage: 10, libelle: 'Séjours en famille', du: '', au: '' }
@@ -152,7 +152,7 @@ window.DOUIRA_CONFIG = {
       reglement: "Fêtes et événements soumis à accord préalable. Non-fumeur à l'intérieur. Calme après 23 h.",
       arrivee: '15:00', depart: '11:00', annulation: 'stricte', modeGestion: 'autonome',
       numeroAutorisation: '',
-      photos: ['photos/villa-piscine.jpg', 'photos/riad-cour.jpg'],
+      photos: ['photos/villa-piscine.jpg?v=2', 'photos/riad-cour.jpg?v=2'],
       positionApprox: { lat: 31.67503, lng: -7.97498 },
       diamond: true,
       remise: { pourcentage: 0, libelle: '', du: '', au: '' }
@@ -165,19 +165,19 @@ window.DOUIRA_CONFIG = {
   // reduction : réduction membre en % (affichée en -% et sur la mini-page). parcours : ce que vit le client.
   activites: [
     { nom: 'Jardin Majorelle', categorie: 'culture', position: { lat: 31.64173, lng: -8.00328 }, prix: 170, reduction: 15, note: "Jardin d'Yves Saint Laurent et musée berbère.", parcours: "Entrée coupe-file, visite guidée du jardin bleu et du musée Yves Saint Laurent (environ 1h30), puis temps libre pour les photos.", agence: 'Marrakech Découverte', agenceDesc: 'Visites guidées de la médina et des monuments, guides francophones agréés.' },
-    { nom: 'Place Jemaa el-Fna', categorie: 'culture', position: { lat: 31.62577, lng: -7.98915 }, prix: 150, reduction: 10, note: 'Cœur de la médina, animée à la nuit tombée.', parcours: 'Balade guidée en soirée : conteurs, musiciens et stands de street-food, dégustation de spécialités, puis entrée dans les souks.', photo: 'photos/act-jemaa.jpg', agence: 'Marrakech Découverte', agenceDesc: 'Visites guidées de la médina et des monuments, guides francophones agréés.' },
-    { nom: 'Mosquée Koutoubia', categorie: 'culture', position: { lat: 31.62376, lng: -7.99335 }, prix: 120, reduction: 10, note: 'Minaret emblématique (extérieur et jardins).', parcours: "Tour des jardins de la Koutoubia, histoire almohade du minaret, puis marche commentée vers la médina.", photo: 'photos/act-koutoubia.jpg', agence: 'Marrakech Découverte', agenceDesc: 'Visites guidées de la médina et des monuments, guides francophones agréés.' },
-    { nom: 'Palais de la Bahia', categorie: 'culture', position: { lat: 31.62183, lng: -7.98303 }, prix: 100, reduction: 15, note: 'Palais du XIXᵉ, patios et plafonds peints.', parcours: "Visite commentée des patios, appartements et jardins du palais (environ 1h), avec explications sur le zellige.", photo: 'photos/act-bahia.jpg', agence: 'Marrakech Découverte', agenceDesc: 'Visites guidées de la médina et des monuments, guides francophones agréés.' },
-    { nom: 'Souk Semmarine', categorie: 'souks', position: { lat: 31.62952, lng: -7.98760 }, prix: 200, reduction: 10, note: 'Artisanat, cuir, épices, tapis.', parcours: 'Parcours shopping accompagné dans les souks : artisanat, épices, maroquinerie et tapis, avec conseils pour négocier.', photo: 'photos/act-souk.jpg', agence: 'Médina Artisanat', agenceDesc: 'Balades shopping dans les souks avec un accompagnateur local.' },
+    { nom: 'Place Jemaa el-Fna', categorie: 'culture', position: { lat: 31.62577, lng: -7.98915 }, prix: 150, reduction: 10, note: 'Cœur de la médina, animée à la nuit tombée.', parcours: 'Balade guidée en soirée : conteurs, musiciens et stands de street-food, dégustation de spécialités, puis entrée dans les souks.', photo: 'photos/act-jemaa.jpg?v=2', agence: 'Marrakech Découverte', agenceDesc: 'Visites guidées de la médina et des monuments, guides francophones agréés.' },
+    { nom: 'Mosquée Koutoubia', categorie: 'culture', position: { lat: 31.62376, lng: -7.99335 }, prix: 120, reduction: 10, note: 'Minaret emblématique (extérieur et jardins).', parcours: "Tour des jardins de la Koutoubia, histoire almohade du minaret, puis marche commentée vers la médina.", photo: 'photos/act-koutoubia.jpg?v=2', agence: 'Marrakech Découverte', agenceDesc: 'Visites guidées de la médina et des monuments, guides francophones agréés.' },
+    { nom: 'Palais de la Bahia', categorie: 'culture', position: { lat: 31.62183, lng: -7.98303 }, prix: 100, reduction: 15, note: 'Palais du XIXᵉ, patios et plafonds peints.', parcours: "Visite commentée des patios, appartements et jardins du palais (environ 1h), avec explications sur le zellige.", photo: 'photos/act-bahia.jpg?v=2', agence: 'Marrakech Découverte', agenceDesc: 'Visites guidées de la médina et des monuments, guides francophones agréés.' },
+    { nom: 'Souk Semmarine', categorie: 'souks', position: { lat: 31.62952, lng: -7.98760 }, prix: 200, reduction: 10, note: 'Artisanat, cuir, épices, tapis.', parcours: 'Parcours shopping accompagné dans les souks : artisanat, épices, maroquinerie et tapis, avec conseils pour négocier.', photo: 'photos/act-souk.jpg?v=2', agence: 'Médina Artisanat', agenceDesc: 'Balades shopping dans les souks avec un accompagnateur local.' },
     { nom: 'Jardin de la Ménara', categorie: 'culture', position: { lat: 31.61111, lng: -8.02083 }, prix: 120, reduction: 10, note: "Bassin et pavillon face à l'Atlas.", parcours: "Promenade au bassin de la Ménara au coucher du soleil, vue sur l'Atlas et les oliviers, pause thé.", agence: 'Marrakech Découverte', agenceDesc: 'Visites guidées de la médina et des monuments, guides francophones agréés.' },
     { nom: 'Hammam traditionnel, Guéliz', categorie: 'bienetre', position: { lat: 31.63500, lng: -8.01000 }, prix: 250, reduction: 20, note: 'Gommage et soins, sur réservation.', parcours: 'Hammam traditionnel : vapeur, gommage au savon noir, enveloppement au rhassoul et massage relaxant (environ 1h30).', agence: 'Dar Essalam Bien-être', agenceDesc: 'Hammam traditionnel, gommage et massages, sur réservation.' },
-    { nom: "Désert d'Agafay", categorie: 'excursions', position: { lat: 31.46000, lng: -8.15000 }, prix: 600, reduction: 15, note: 'Dîner et nuit sous tente à 40 min de la ville.', parcours: 'Transfert en 4x4, balade à dos de dromadaire, coucher de soleil, dîner et nuit sous tente au camp.', photo: 'photos/act-agafay.jpg', agence: 'Atlas Évasion', agenceDesc: 'Excursions à la journée et nuits sous tente, transport depuis votre logement inclus.' },
-    { nom: "Vallée de l'Ourika", categorie: 'excursions', position: { lat: 31.36000, lng: -7.70000 }, prix: 400, reduction: 15, note: "Cascades et villages de l'Atlas, à la journée.", parcours: "Route de l'Ourika, villages berbères, randonnée vers les cascades de Setti Fatma et déjeuner en bord de rivière.", photo: 'photos/act-ourika.jpg', agence: 'Atlas Évasion', agenceDesc: 'Excursions à la journée et nuits sous tente, transport depuis votre logement inclus.' },
-    { nom: 'Golf Amelkis', categorie: 'sport', position: { lat: 31.59000, lng: -7.95500 }, prix: 700, reduction: 20, note: 'Parcours 18 trous au sud de la ville.', parcours: "18 trous au golf d'Amelkis, voiturette incluse, accès au club-house et au practice.", photo: 'photos/act-golf.jpg', agence: 'Amelkis Golf Club', agenceDesc: 'Parcours 18 trous, location de matériel et cours avec moniteur.' }
+    { nom: "Désert d'Agafay", categorie: 'excursions', position: { lat: 31.46000, lng: -8.15000 }, prix: 600, reduction: 15, note: 'Dîner et nuit sous tente à 40 min de la ville.', parcours: 'Transfert en 4x4, balade à dos de dromadaire, coucher de soleil, dîner et nuit sous tente au camp.', photo: 'photos/act-agafay.jpg?v=2', agence: 'Atlas Évasion', agenceDesc: 'Excursions à la journée et nuits sous tente, transport depuis votre logement inclus.' },
+    { nom: "Vallée de l'Ourika", categorie: 'excursions', position: { lat: 31.36000, lng: -7.70000 }, prix: 400, reduction: 15, note: "Cascades et villages de l'Atlas, à la journée.", parcours: "Route de l'Ourika, villages berbères, randonnée vers les cascades de Setti Fatma et déjeuner en bord de rivière.", photo: 'photos/act-ourika.jpg?v=2', agence: 'Atlas Évasion', agenceDesc: 'Excursions à la journée et nuits sous tente, transport depuis votre logement inclus.' },
+    { nom: 'Golf Amelkis', categorie: 'sport', position: { lat: 31.59000, lng: -7.95500 }, prix: 700, reduction: 20, note: 'Parcours 18 trous au sud de la ville.', parcours: "18 trous au golf d'Amelkis, voiturette incluse, accès au club-house et au practice.", photo: 'photos/act-golf.jpg?v=2', agence: 'Amelkis Golf Club', agenceDesc: 'Parcours 18 trous, location de matériel et cours avec moniteur.' }
   ],
 
   // Véhicules proposés en option dans les demandes (facultatif).
   vehicules: [
-    /* { type: 'voiture', nom: 'Renault Clio automatique', description: '5 places, essence', prixJour: 420, caution: 4000, photo: 'photos/clio.jpg' }, */
+    /* { type: 'voiture', nom: 'Renault Clio automatique', description: '5 places, essence', prixJour: 420, caution: 4000, photo: 'photos/clio.jpg?v=2' }, */
   ]
 };
