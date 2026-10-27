@@ -476,8 +476,9 @@ nav.main button{font-weight:600}
 .host{display:flex;gap:14px;align-items:center;border-block:1px solid var(--line);padding-block:16px}
 .host .av{width:52px;height:52px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-family:var(--f-display);font-size:1.4rem;flex:none}
 .amen2{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px 18px;list-style:none;margin:0;padding:0}
-.amen2 li{display:flex;gap:8px;align-items:center}
+.amen2 li{display:flex;gap:9px;align-items:center}
 .amen2 .ico{color:var(--accent)}
+.amen2 .amen-ico{width:20px;height:20px;flex:none}
 .minimap{height:260px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--sea)}
 .minimap svg{width:100%;height:100%;display:block}
 /* Carte interactive (tuiles OpenStreetMap ou fournisseur de config.js) */
@@ -4039,6 +4040,46 @@ function rail(inner) {
   return `<div class="rail-wrap"><button type="button" class="rail-a prev" data-act="railNav" data-dir="-1" aria-label="Précédent">${CHEV_L}</button><div class="lrail">${inner}</div><button type="button" class="rail-a next" data-act="railNav" data-dir="1" aria-label="Suivant">${CHEV_R}</button></div>`;
 }
 A.railNav = (d, el) => { const w = el.parentElement.querySelector('.lrail'); if (w) w.scrollBy({ left: Number(d.dir) * Math.max(240, w.clientWidth * 0.8), behavior: 'smooth' }); };
+// Icône spécifique à chaque équipement (repli : puce générique).
+const AMEN_SVG = {
+  wifi: '<path d="M4 10a13 13 0 0 1 16 0"/><path d="M7 13.5a8 8 0 0 1 10 0"/><path d="M9.5 17a4 4 0 0 1 5 0"/><circle cx="12" cy="20" r=".6" fill="currentColor" stroke="none"/>',
+  clim: '<path d="M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9"/><path d="M12 3l-2 2.5M12 3l2 2.5M12 21l-2-2.5M12 21l2-2.5"/>',
+  chauff: '<path d="M12 3c3 3.5 4.5 5.5 4.5 8.5a4.5 4.5 0 0 1-9 0c0-1.3.6-2.4 1.4-3.2C10 11 11.5 9 12 3z"/>',
+  cuisine: '<path d="M7 3v18M5 3v5a2 2 0 0 0 4 0V3M16 3c-1.6 0-2.5 2-2.5 4.5S15 11 16 11v10"/>',
+  linge: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="13" r="3.6"/><path d="M8 6.5h.01M10.5 6.5h.01"/>',
+  tv: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  parking: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M10 16V8h3a2.4 2.4 0 0 1 0 4.8h-3"/>',
+  ascenseur: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M12 7l-2 2.6h4z" fill="currentColor" stroke="none"/><path d="M12 17l-2-2.6h4z" fill="currentColor" stroke="none"/>',
+  terrasse: '<circle cx="12" cy="12" r="3.6"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/>',
+  piscine: '<path d="M8 12V6a2 2 0 0 1 4 0M16 12V6"/><path d="M3 15c2 0 2-1.4 4-1.4s2 1.4 4 1.4 2-1.4 4-1.4 2 1.4 4 1.4"/><path d="M3 19c2 0 2-1.4 4-1.4s2 1.4 4 1.4 2-1.4 4-1.4 2 1.4 4 1.4"/>',
+  mer: '<path d="M3 8h18"/><path d="M3 13c2 0 2-1.4 4-1.4s2 1.4 4 1.4 2-1.4 4-1.4 2 1.4 4 1.4"/><path d="M3 17.5c2 0 2-1.4 4-1.4s2 1.4 4 1.4 2-1.4 4-1.4 2 1.4 4 1.4"/>',
+  travail: '<rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 20h20"/>',
+  jardin: '<path d="M12 21v-6M12 15c-3.2 0-5.5-2.3-5.5-5.5A5.5 5.5 0 0 1 12 4a5.5 5.5 0 0 1 5.5 5.5C17.5 12.7 15.2 15 12 15z"/>',
+  barbecue: '<circle cx="12" cy="9" r="6"/><path d="M9 7h.01M12 6.6h.01M15 7h.01"/><path d="M8 14.5l-2 6.5M16 14.5l2 6.5M9.5 21h5"/>',
+  gardien: '<path d="M12 3l7 3v5c0 4.2-3 7.4-7 9-4-1.6-7-4.8-7-9V6z"/>',
+  hammam: '<path d="M5 11a7 7 0 0 1 14 0"/><path d="M8 21c0-2.5 1.6-3.5 1.6-6M12 21c0-2.5 1.6-3.5 1.6-6M15.8 21c0-2.5 1.6-3.5 1.6-6"/>'
+};
+function amenityIcon(name) {
+  const n = (name || '').toLowerCase();
+  let k = '';
+  if (/wi.?fi/.test(n)) k = 'wifi';
+  else if (/clim/.test(n)) k = 'clim';
+  else if (/chauff/.test(n)) k = 'chauff';
+  else if (/cuisine/.test(n)) k = 'cuisine';
+  else if (/linge|lave/.test(n)) k = 'linge';
+  else if (/t[ée]l[ée]|tv|écran/.test(n)) k = 'tv';
+  else if (/parking|voiture/.test(n)) k = 'parking';
+  else if (/ascenseur/.test(n)) k = 'ascenseur';
+  else if (/piscine/.test(n)) k = 'piscine';
+  else if (/vue mer|mer/.test(n)) k = 'mer';
+  else if (/terrasse|balcon/.test(n)) k = 'terrasse';
+  else if (/travail|bureau/.test(n)) k = 'travail';
+  else if (/jardin/.test(n)) k = 'jardin';
+  else if (/barbecue|bbq/.test(n)) k = 'barbecue';
+  else if (/gardien|s[ée]curit/.test(n)) k = 'gardien';
+  else if (/hammam|spa|bien.?[êe]tre/.test(n)) k = 'hammam';
+  return k ? `<svg class="ico amen-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${AMEN_SVG[k]}</svg>` : IC.check;
+}
 // Boutons de contact : message interne (page Contact), WhatsApp et appel téléphonique.
 function contactActions(phone, subject) {
   const digits = (phone || '').replace(/\D/g, '');
@@ -4238,7 +4279,7 @@ VIEWS.listing = p => {
         ${specsHtml(l, 'lg')}
         ${IS_VITRINE ? '' : `<div class="host"><span class="av" aria-hidden="true">${esc((owner.name || '?')[0])}</span><div class="stack-s" style="gap:2px"><b>Hôte : ${esc(firstName(owner.name))}</b><span class="small muted">Sur ${esc(S.settings.siteName)} depuis ${new Date(owner.createdAt || Date.now()).getFullYear()} · logement géré avec notre équipe${hr.count ? ` · note d'hôte ${fmtAvg(hr.avg)}/5` : ''}</span></div></div>`}
         <div class="stack-s"><h3>${tpl.nounTitle || 'Le ' + tpl.noun}</h3><p style="max-width:68ch">${esc(l.description)}</p>${extra ? `<div class="facts">${extra}</div>` : ''}</div>
-        ${l.amenities.length ? `<div class="stack"><h3>Équipements</h3><ul class="amen2">${l.amenities.map(x => `<li>${IC.check}${esc(x)}</li>`).join('')}</ul></div>` : ''}
+        ${l.amenities.length ? `<div class="stack"><h3>Équipements</h3><ul class="amen2">${l.amenities.map(x => `<li>${amenityIcon(x)}${esc(x)}</li>`).join('')}</ul></div>` : ''}
         <div class="two">
           <div class="stack-s"><h3>Arrivée et départ</h3><p>Arrivée à partir de <b>${esc(l.checkIn)}</b>, départ avant <b>${esc(l.checkOut)}</b>. Arrivée autonome avec code.</p></div>
           <div class="stack-s"><h3>Règlement</h3><p>${esc(l.rules)}</p></div>
@@ -6400,7 +6441,7 @@ VIEWS.listing = p => {
         ${IS_VITRINE ? '' : `<div class="host"><span class="av" aria-hidden="true">${esc((owner.name || '?')[0])}</span><div class="stack-s" style="gap:2px"><b>Hôte : ${esc(firstName(owner.name))}</b><span class="small muted">Sur ${esc(S.settings.siteName)} depuis ${new Date(owner.createdAt || Date.now()).getFullYear()} · logement géré avec notre équipe${hr.count ? ` · note d'hôte ${fmtAvg(hr.avg)}/5` : ''}</span></div></div>`}
         <div class="acc">
           ${acc('Présentation', `<p style="max-width:68ch">${esc(l.description)}</p>${extra ? `<div class="facts">${extra}</div>` : ''}`, true)}
-          ${l.amenities.length ? acc('Équipements', `<ul class="amen2">${l.amenities.map(x => `<li>${IC.check}${esc(x)}</li>`).join('')}</ul>`, true) : ''}
+          ${l.amenities.length ? acc('Équipements', `<ul class="amen2">${l.amenities.map(x => `<li>${amenityIcon(x)}${esc(x)}</li>`).join('')}</ul>`, true) : ''}
           ${acc('Arrivée et accès', `<p>Arrivée à partir de <b>${esc(l.checkIn)}</b>, départ avant <b>${esc(l.checkOut)}</b>. Arrivée autonome avec code.</p><p class="small muted">L'adresse exacte et le code d'accès sont communiqués uniquement au voyageur qui a réservé, après confirmation de son paiement.</p><div class="stack" id="l-map">${locationSection(l)}<div class="minimap">${mapBox([l], { zone: true })}</div><p class="small muted">Le logement se trouve dans ce secteur. L'adresse exacte est communiquée au voyageur après confirmation de sa réservation.</p></div>`)}
           ${nearbyActivities(l).length ? acc('À proximité', activitiesSection(l), true) : ''}
           ${acc('Règlement et annulation', `<p><b>Règlement :</b> ${esc(l.rules)}</p><p><b>Annulation : ${POLICIES[l.policy].label}.</b> ${esc(POLICIES[l.policy].text)}</p><p><b>Ménage :</b> logement nettoyé avant votre arrivée. Aucuns frais de ménage à payer.</p>${l.registrationNo || !IS_VITRINE ? `<p class="small muted">N° d'autorisation ou d'enregistrement de l'hébergement : <span class="mono">${esc(l.registrationNo || 'non renseigné')}</span> <span class="val">À valider</span></p>` : ''}`, true)}
