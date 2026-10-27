@@ -6997,7 +6997,7 @@ window.addEventListener('load', () => { fxRefresh(); });
    ici : le client est redirigé vers la page du prestataire de paiement.
    ===================================================================== */
 if (IS_ONLINE) {
-  const ONLINE = { csrf: '', unavail: {}, bookings: null, booking: {}, card: null, loading: {} };
+  const ONLINE = { csrf: '', unavail: {}, bookings: null, booking: {}, card: null, loading: {}, biens: null, acts: null };
   const AUTH_COPY = { title: 'Connexion', register: 'Créer un compte' };
 
   /* ---------- Appels API : même origine, cookie de session, jeton anti-CSRF ---------- */
@@ -7014,8 +7014,8 @@ if (IS_ONLINE) {
   }
   // Le compte connecté est représenté comme un utilisateur du site (me(), role() fonctionnent sans changement)
   function setUser(u, csrf) {
-    if (u) { S.users = [{ id: u.id, name: u.name, email: u.email, phone: u.phone || '', role: u.role === 'admin' ? 'admin' : 'client', createdAt: u.createdAt, memberNo: u.memberNo, mustChangePassword: !!u.mustChangePassword }]; S.session.userId = u.id; ONLINE.csrf = csrf || ONLINE.csrf; }
-    else { S.users = []; S.session.userId = null; ONLINE.csrf = ''; ONLINE.bookings = null; ONLINE.booking = {}; ONLINE.card = null; }
+    if (u) { const role = ['admin', 'collaborator', 'owner', 'agency'].includes(u.role) ? u.role : 'client'; S.users = [{ id: u.id, name: u.name, email: u.email, phone: u.phone || '', role, createdAt: u.createdAt, memberNo: u.memberNo, mustChangePassword: !!u.mustChangePassword }]; S.session.userId = u.id; ONLINE.csrf = csrf || ONLINE.csrf; }
+    else { S.users = []; S.session.userId = null; ONLINE.csrf = ''; ONLINE.bookings = null; ONLINE.booking = {}; ONLINE.card = null; ONLINE.biens = null; ONLINE.acts = null; }
   }
   // Chargement différé : la vue affiche un espace réservé, la donnée arrive puis la page est redessinée
   function lazy(key, loader) {
@@ -7262,13 +7262,158 @@ if (IS_ONLINE) {
   A.olMailTest = async () => { try { const r = await api('POST', '/api/admin/settings/mail/test', {}); toast(`E-mail de test envoyé via ${r.provider} à votre adresse.`); } catch (e) { toast(e.message, true); } };
   SPACE.a_password = () => adminGuard() ? `${head('Mot de passe', 'Compte ' + esc(me().email))}<form class="panel stack" data-form="olPassword" style="max-width:520px">${field('Mot de passe actuel', '<input name="current" type="password" required autocomplete="current-password">')}${field('Nouveau mot de passe', '<input name="password" type="password" required minlength="10" maxlength="200" autocomplete="new-password">', '10 caractères minimum. Vos autres appareils seront déconnectés.')}<div><button class="btn btn-p btn-s" type="submit">Changer le mot de passe</button></div></form>` : '';
 
+  /* ---------- Administration du catalogue en ligne (biens et activités) ----------
+     Droits (appliqués aussi côté serveur dans api/lib/catalog_admin) :
+       - Biens : admin, collaborateur, propriétaire (le propriétaire ne voit et ne gère que ses biens).
+       - Activités : admin, agence (l'agence ne voit et ne gère que ses activités, réduction membre -% obligatoire). */
+  const CAN_BIENS = r => ['admin', 'collaborator', 'owner'].includes(r);
+  const CAN_ACTS = r => ['admin', 'agency'].includes(r);
+  const catPill = s => pill(s === 'published' ? ['Publié', 'ok'] : s === 'archived' ? ['Archivé', ''] : ['Brouillon', '']);
+  const jsonList = s => { try { const a = JSON.parse(s || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  const loadBiens = () => lazy('biens', async () => { ONLINE.biens = (await api('GET', '/api/admin/catalog/listings')).listings; });
+  const loadActs = () => lazy('acts', async () => { ONLINE.acts = (await api('GET', '/api/admin/catalog/activities')).activities; });
+  // Navigation : onglets de l'espace selon le rôle (remplace navFor du mode démo pour les rôles en ligne).
+  NAV.owner = [['o_biens', 'Mes biens'], ['c_profile', 'Mon profil']];
+  NAV.agency = [['g_acts', 'Mes activités'], ['c_profile', 'Mon profil']];
+  NAV.collab = [['t_biens', 'Biens'], ['c_profile', 'Mon profil']];
+  navFor = function (r) { return r === 'client' ? NAV.client : r === 'owner' ? NAV.owner : r === 'agency' ? NAV.agency : r === 'collaborator' ? NAV.collab : NAV.team.concat([['t_biens', 'Biens'], ['t_acts', 'Activités']]); };
+  // Retour « ← » depuis un éditeur vers sa liste
+  Object.assign(DETAIL_PARENT, { o_bien: 'o_biens', t_bien: 't_biens', g_act: 'g_acts', t_act: 't_acts' });
+
+  /* -- Biens (admin / collaborateur / propriétaire) -- */
+  function biensList(editorTab) {
+    if (ONLINE.biens === null) { loadBiens(); return head('Biens') + spinner(); }
+    const mine = me().role === 'owner';
+    const rows = ONLINE.biens.map(l => `<tr>
+      <td><b>${esc(l.title)}</b><div class="small muted">${esc([l.area, l.city].filter(Boolean).join(', '))}</div></td>
+      <td>${esc(l.category === 'villa' ? 'Villa' : 'Appartement')}</td>
+      <td class="r">${l.owner_price ? mad(l.owner_price) : '—'}</td>
+      <td>${catPill(l.status)}</td>
+      <td><div class="row" style="gap:6px;flex-wrap:wrap">${btnGo('Modifier', 'space', { tab: editorTab, id: l.id })}<button class="btn btn-g btn-s" data-act="olBienPublish" data-id="${esc(l.id)}" data-pub="${l.status === 'published' ? '0' : '1'}">${l.status === 'published' ? 'Retirer' : 'Publier'}</button><button class="btn btn-g btn-s" data-act="olShare" data-id="${esc(l.id)}" data-title="${esc(l.title)}" data-area="${esc(l.area || '')}" data-city="${esc(l.city || '')}">Partager</button></div></td></tr>`);
+    const pub = ONLINE.biens.filter(l => l.status === 'published').length;
+    return head(mine ? 'Mes biens' : 'Biens', `${plural(ONLINE.biens.length, 'bien')} · ${pub} publié(s)`, `<button class="btn btn-p btn-s" data-act="go" data-to="space" data-tab="${editorTab}" data-id="new">Nouveau bien</button>`)
+      + table(['Bien', 'Catégorie', '>Prix/nuit', 'Statut', 'Actions'], rows, 'Aucun bien pour le moment. Créez-en un.');
+  }
+  function bienForm(listTab, p) {
+    if (ONLINE.biens === null) { loadBiens(); return head('Bien') + spinner(); }
+    const isNew = !p.id || p.id === 'new';
+    const l = isNew ? {} : (ONLINE.biens.find(x => x.id === p.id) || {});
+    if (!isNew && !l.id) return head('Bien introuvable') + `<p class="muted">Ce bien n'existe pas ou ne vous est pas accessible.</p>` + btnGo('← Retour', 'space', { tab: listTab });
+    const mine = me().role === 'owner';
+    return head(isNew ? 'Nouveau bien' : 'Modifier le bien', isNew ? '' : esc(l.title), btnGo('← Retour', 'space', { tab: listTab }))
+      + `<form class="stack" data-form="olBien" data-id="${esc(l.id || 'new')}" data-list="${listTab}">
+      <fieldset class="fgrid"><legend>Classement</legend>
+        ${field('Catégorie', `<select name="category">${opt('appartement', 'Appartement', l.category)}${opt('villa', 'Villa', l.category)}</select>`)}
+        ${field('Mode de gestion', `<select name="managementMode">${Object.entries(MGMT_MODES).map(([k, v]) => opt(k, v[0], l.management_mode || 'delegue')).join('')}</select>`, 'Autonome : le propriétaire gère réservations et échanges. Déléguée : l\'équipe gère tout.')}
+        ${field('Statut', `<select name="status">${opt('draft', 'Brouillon', l.status || 'draft')}${opt('published', 'Publié', l.status)}</select>`, 'Publié = visible sur le site.')}
+      </fieldset>
+      <fieldset class="fgrid"><legend>Présentation</legend>
+        ${field('Titre', `<input name="title" required maxlength="120" value="${esc(l.title || '')}">`, '', 'full')}
+        ${field('Ville', `<input name="city" value="${esc(l.city || 'Marrakech')}">`)}
+        ${field('Quartier', `<input name="area" value="${esc(l.area || '')}">`)}
+        ${field('Description', `<textarea name="description" rows="4">${esc(l.description || '')}</textarea>`, '', 'full')}
+      </fieldset>
+      <fieldset class="fgrid"><legend>Capacité</legend>
+        ${field('Voyageurs', `<input type="number" name="guests" min="1" value="${esc(l.guests || 2)}">`)}
+        ${field('Chambres', `<input type="number" name="bedrooms" min="0" value="${esc(l.bedrooms || 0)}">`)}
+        ${field('Salles de bain', `<input type="number" name="bathrooms" min="0" value="${esc(l.bathrooms || 0)}">`)}
+        ${field('Surface (m²)', `<input type="number" name="surface" min="0" value="${esc(l.surface || '')}">`)}
+      </fieldset>
+      <fieldset class="fgrid"><legend>Tarif et séjour</legend>
+        ${field('Prix propriétaire / nuit (MAD)', `<input type="number" name="ownerPrice" min="0" value="${esc(l.owner_price || '')}">`)}
+        ${field('Nuits minimum', `<input type="number" name="minNights" min="1" value="${esc(l.min_nights || 1)}">`)}
+        ${field('Arrivée', `<input name="checkIn" value="${esc(l.check_in || '15:00')}">`)}
+        ${field('Départ', `<input name="checkOut" value="${esc(l.check_out || '11:00')}">`)}
+        ${field('Politique d\'annulation', `<select name="policy">${opt('flexible', 'Flexible', l.policy)}${opt('moderee', 'Modérée', l.policy)}${opt('stricte', 'Stricte', l.policy)}</select>`)}
+      </fieldset>
+      <fieldset class="fgrid"><legend>Localisation et légal</legend>
+        ${field('Latitude (approx.)', `<input name="lat" value="${esc(l.lat == null ? '' : l.lat)}">`, 'Centre du quartier, jamais l\'adresse exacte.')}
+        ${field('Longitude (approx.)', `<input name="lng" value="${esc(l.lng == null ? '' : l.lng)}">`)}
+        ${field('N° d\'autorisation (loi 80-14)', `<input name="registrationNo" value="${esc(l.registration_no || '')}">`)}
+        ${field('Téléphone de contact', `<input name="contactPhone" value="${esc(l.contact_phone || '')}">`, mine ? 'Visible par le client en gestion autonome.' : 'Sinon numéro de l\'équipe.')}
+      </fieldset>
+      <fieldset class="fgrid"><legend>Équipements et photos</legend>
+        ${field('Équipements (séparés par des virgules)', `<input name="amenities" value="${esc(jsonList(l.amenities).join(', '))}">`, '', 'full')}
+        ${field('Photos (une URL par ligne)', `<textarea name="photos" rows="3">${esc(jsonList(l.photos).join('\n'))}</textarea>`, '', 'full')}
+      </fieldset>
+      <div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn btn-p" type="submit">Enregistrer</button>${btnGo('Annuler', 'space', { tab: listTab })}</div></form>`;
+  }
+  SPACE.o_biens = () => me().role === 'owner' ? biensList('o_bien') : '';
+  SPACE.o_bien = p => me().role === 'owner' ? bienForm('o_biens', p) : '';
+  SPACE.t_biens = () => CAN_BIENS(me().role) && me().role !== 'owner' ? biensList('t_bien') : '';
+  SPACE.t_bien = p => CAN_BIENS(me().role) && me().role !== 'owner' ? bienForm('t_biens', p) : '';
+  F.olBien = async (data, form) => {
+    const toArr = s => String(s || '').split(/[\n,]/).map(x => x.trim()).filter(Boolean);
+    const body = { id: form.dataset.id === 'new' ? undefined : form.dataset.id, title: data.title, category: data.category, managementMode: data.managementMode, status: data.status, city: data.city, area: data.area, description: data.description, guests: data.guests, bedrooms: data.bedrooms, bathrooms: data.bathrooms, surface: data.surface, ownerPrice: data.ownerPrice, minNights: data.minNights, checkIn: data.checkIn, checkOut: data.checkOut, policy: data.policy, lat: data.lat, lng: data.lng, registrationNo: data.registrationNo, contactPhone: data.contactPhone, amenities: toArr(data.amenities), photos: toArr(data.photos) };
+    try { await api('POST', '/api/admin/catalog/listings', body); ONLINE.biens = null; toast('Bien enregistré.'); go('space', { tab: form.dataset.list }); } catch (e) { toast(e.message, true); }
+  };
+  A.olBienPublish = async d => { try { await api('POST', `/api/admin/catalog/listings/${encodeURIComponent(d.id)}/publish`, { publish: d.pub === '1' }); ONLINE.biens = null; toast(d.pub === '1' ? 'Bien publié.' : 'Bien retiré.'); render(); } catch (e) { toast(e.message, true); } };
+  A.olShare = d => {
+    const base = (S.settings.siteUrl || (location.origin + location.pathname)).replace(/[#?].*$/, '').replace(/\/+$/, '');
+    const url = base + '/#annonce-' + d.id;
+    const txt = `${d.title} (${[d.area, d.city].filter(Boolean).join(', ')}) · ${S.settings.siteName} : ${url}`;
+    const wa = 'https://wa.me/?text=' + encodeURIComponent(txt);
+    openModal(`<h2>Partager ce logement</h2><p class="small muted">Copiez le lien ou partagez-le directement.</p>${field('Lien', `<div class="row" style="gap:6px"><input readonly value="${esc(url)}" class="grow" style="flex:1">${copyBtn(url, 'Copier')}</div>`)}<div class="row" style="flex-wrap:wrap;gap:8px"><a class="btn btn-p btn-s" href="${esc(wa)}" target="_blank" rel="noopener">Partager sur WhatsApp</a><button class="btn btn-g btn-s" data-act="closeModal">Fermer</button></div>`);
+  };
+
+  /* -- Activités (admin / agence) -- */
+  function actsList(editorTab) {
+    if (ONLINE.acts === null) { loadActs(); return head('Activités') + spinner(); }
+    const mine = me().role === 'agency';
+    const rows = ONLINE.acts.map(a => `<tr>
+      <td><b>${esc(a.name)}</b>${a.note ? `<div class="small muted">${esc(a.note)}</div>` : ''}</td>
+      <td>${esc(ACT_CATEGORIES[a.category] || a.category)}</td>
+      <td class="r">${a.discount_pct ? '−' + a.discount_pct + ' %' : '—'}</td>
+      <td>${catPill(a.status)}</td>
+      <td><div class="row" style="gap:6px;flex-wrap:wrap">${btnGo('Modifier', 'space', { tab: editorTab, id: a.id })}<button class="btn btn-g btn-s" data-act="olActPublish" data-id="${esc(a.id)}" data-pub="${a.status === 'published' ? '0' : '1'}">${a.status === 'published' ? 'Retirer' : 'Publier'}</button></div></td></tr>`);
+    const pub = ONLINE.acts.filter(a => a.status === 'published').length;
+    return head(mine ? 'Mes activités' : 'Activités', `${plural(ONLINE.acts.length, 'activité')} · ${pub} publiée(s) · réduction membre obligatoire`, `<button class="btn btn-p btn-s" data-act="go" data-to="space" data-tab="${editorTab}" data-id="new">Nouvelle activité</button>`)
+      + table(['Activité', 'Catégorie', '>Réduction', 'Statut', 'Actions'], rows, 'Aucune activité. Créez-en une.');
+  }
+  function actForm(listTab, p) {
+    if (ONLINE.acts === null) { loadActs(); return head('Activité') + spinner(); }
+    const isNew = !p.id || p.id === 'new';
+    const a = isNew ? {} : (ONLINE.acts.find(x => x.id === p.id) || {});
+    if (!isNew && !a.id) return head('Activité introuvable') + `<p class="muted">Cette activité n'existe pas ou ne vous est pas accessible.</p>` + btnGo('← Retour', 'space', { tab: listTab });
+    return head(isNew ? 'Nouvelle activité' : 'Modifier l\'activité', isNew ? '' : esc(a.name), btnGo('← Retour', 'space', { tab: listTab }))
+      + `<form class="stack" data-form="olAct" data-id="${esc(a.id || 'new')}" data-list="${listTab}">
+      <fieldset class="fgrid"><legend>Activité</legend>
+        ${field('Nom', `<input name="name" required maxlength="100" value="${esc(a.name || '')}">`, '', 'full')}
+        ${field('Catégorie', `<select name="cat">${Object.entries(ACT_CATEGORIES).map(([k, v]) => opt(k, v, a.category || 'culture')).join('')}</select>`)}
+        ${field('Réduction membre (%)', `<input type="number" name="pct" min="1" max="90" required value="${esc(a.discount_pct || '')}">`, 'Obligatoire : la réduction accordée aux membres Douira.')}
+        ${field('Prix indicatif (MAD)', `<input type="number" name="price" min="0" value="${esc(a.price == null ? '' : a.price)}">`, 'Laisser vide = gratuit / non précisé.')}
+        ${field('Statut', `<select name="status">${opt('draft', 'Brouillon', a.status || 'draft')}${opt('published', 'Publié', a.status)}</select>`)}
+      </fieldset>
+      <fieldset class="fgrid"><legend>Lieu et contenu</legend>
+        ${field('Latitude', `<input name="lat" value="${esc(a.lat == null ? '' : a.lat)}">`)}
+        ${field('Longitude', `<input name="lng" value="${esc(a.lng == null ? '' : a.lng)}">`)}
+        ${field('Photo (URL)', `<input name="photo" value="${esc(a.photo || '')}">`, '', 'full')}
+        ${field('Note courte', `<input name="note" maxlength="200" value="${esc(a.note || '')}">`, '', 'full')}
+        ${field('Parcours (ce que vit le client)', `<textarea name="parcours" rows="3">${esc(a.parcours || '')}</textarea>`, '', 'full')}
+      </fieldset>
+      <fieldset class="fgrid"><legend>Agence</legend>
+        ${me().role === 'admin' ? field('Nom de l\'agence', `<input name="agencyName" value="${esc(a.agency_name || '')}">`, '', 'full') : ''}
+        ${field('Présentation de l\'agence', `<textarea name="agencyDesc" rows="2">${esc(a.agency_desc || '')}</textarea>`, '', 'full')}
+      </fieldset>
+      <div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn btn-p" type="submit">Enregistrer</button>${btnGo('Annuler', 'space', { tab: listTab })}</div></form>`;
+  }
+  SPACE.g_acts = () => me().role === 'agency' ? actsList('g_act') : '';
+  SPACE.g_act = p => me().role === 'agency' ? actForm('g_acts', p) : '';
+  SPACE.t_acts = () => me().role === 'admin' ? actsList('t_act') : '';
+  SPACE.t_act = p => me().role === 'admin' ? actForm('t_acts', p) : '';
+  F.olAct = async (data, form) => {
+    const body = { id: form.dataset.id === 'new' ? undefined : form.dataset.id, name: data.name, cat: data.cat, pct: data.pct, price: data.price, lat: data.lat, lng: data.lng, status: data.status, photo: data.photo, note: data.note, parcours: data.parcours, agencyName: data.agencyName, agencyDesc: data.agencyDesc };
+    try { await api('POST', '/api/admin/catalog/activities', body); ONLINE.acts = null; toast('Activité enregistrée.'); go('space', { tab: form.dataset.list }); } catch (e) { toast(e.message, true); }
+  };
+  A.olActPublish = async d => { try { await api('POST', `/api/admin/catalog/activities/${encodeURIComponent(d.id)}/publish`, { publish: d.pub === '1' }); ONLINE.acts = null; toast(d.pub === '1' ? 'Activité publiée.' : 'Activité retirée.'); render(); } catch (e) { toast(e.message, true); } };
+
   /* ---------- Page « Mon espace » sans compte : invitation à se connecter ---------- */
   const _spaceOnline = VIEWS.space;
   VIEWS.space = p => me() ? _spaceOnline(p) : `<div class="gutter"><div class="wrap" style="padding-block:48px;max-width:560px"><div class="panel stack"><h2>Connexion requise</h2><p class="muted">Connectez-vous pour retrouver vos réservations, votre carte de membre et vos codes d'accès.</p><div class="row"><button class="btn btn-p" data-act="login">Se connecter</button><button class="btn btn-g" data-act="login" data-tab="register">Créer un compte</button></div></div></div></div>`;
 
   // Les écrans de l'espace client relisent toujours le serveur quand on y entre (statut de paiement, accès, annulation)
   const _goOnline = go;
-  go = function (name, p = {}) { if (name === 'space') { if (p.tab === 'c_booking' && p.id) delete ONLINE.booking[p.id]; if (p.tab === 'c_bookings' || p.tab === 'c_stay') ONLINE.bookings = null; } return _goOnline(name, p); };
+  go = function (name, p = {}) { if (name === 'space') { if (p.tab === 'c_booking' && p.id) delete ONLINE.booking[p.id]; if (p.tab === 'c_bookings' || p.tab === 'c_stay') ONLINE.bookings = null; if (p.tab === 'o_biens' || p.tab === 't_biens') ONLINE.biens = null; if (p.tab === 'g_acts' || p.tab === 't_acts') ONLINE.acts = null; } return _goOnline(name, p); };
 
   /* ---------- Session au chargement ---------- */
   /* Au chargement : vérifier que l'API répond (sinon le site reste consultable et oriente vers le contact), puis lire la session. */
