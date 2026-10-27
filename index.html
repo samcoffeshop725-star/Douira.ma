@@ -958,6 +958,11 @@ header.top.lang-hide .lang-btn{display:none}
 .svm:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
 .svm img{width:96px;height:72px;object-fit:cover;border-radius:10px}
 @media (max-width:760px){.svhero{grid-template-columns:1fr}.svhero img{order:-1;aspect-ratio:2/1}}
+/* Activités à proximité (section « À proximité » de la fiche d'un bien) */
+.actcats{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+.actlist{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.act{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface);display:grid;gap:3px}
+.act-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 /* =====================================================================
    Thème « Douira 2026 » : organisation et composants inspirés des applications
    de lifestyle (Privilee) : fond blanc, typographie géométrique légère, boutons
@@ -1601,6 +1606,7 @@ function seed() {
   S = {
     seq: { booking: 2400, ticket: 1040 },
     session: { userId: null },
+    activities: [],
     settings: {
       siteName: 'Douira', brand: 'desert', themeDesert: 1, adminEmail: ADMIN_EMAIL, contactEmail: 'contact@douira.example', whatsapp: '+212 6 00 00 00 00',
       serviceFeePct: 0, markupPct: 12.5, showPctToClients: false, cleaningTariff: { apartments: 125, villas: 125 }, defaultCommission: 15, payoutDelayHours: 24, holdMinutes: 15, accessCodeMode: 'confirmation', accessCodeHours: 48, touristTax: 0, reviewWindowDays: 14, cities: ['Marrakech'],
@@ -1683,6 +1689,34 @@ const listing = id => S.listings.find(l => l.id === id);
 const mgmtMode = l => (l && l.managementMode === 'autonome') ? 'autonome' : 'delegue';
 const isAutonome = l => mgmtMode(l) === 'autonome';
 const mgmtBadge = l => pill(MGMT_MODES[mgmtMode(l)]);
+// Activités à proximité : distance (haversine) depuis le secteur du bien, temps de marche estimé.
+function kmBetween(a, b) {
+  if (!a || !b) return Infinity;
+  const R = 6371, toR = d => d * Math.PI / 180;
+  const dLat = toR(b.lat - a.lat), dLng = toR(b.lng - a.lng);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+const fmtDist = km => km < 0.5 ? 'moins de 500 m' : km < 1 ? '≈ ' + (Math.round(km * 1000 / 50) * 50) + ' m' : '≈ ' + (Math.round(km * 10) / 10) + ' km';
+const walkMin = km => Math.max(1, Math.round(km * 1.3 / 4.5 * 60));
+function nearbyActivities(l, radiusKm) {
+  if (!l || !l.geo || !Array.isArray(S.activities) || !S.activities.length) return [];
+  let r = S.activities.filter(a => a.geo).map(a => ({ a, km: kmBetween(l.geo, a.geo) })).filter(x => isFinite(x.km));
+  if (radiusKm) r = r.filter(x => x.km <= radiusKm);
+  return r.sort((x, y) => x.km - y.km);
+}
+function activitiesSection(l) {
+  const near = nearbyActivities(l);
+  if (!near.length) return '';
+  const cats = [...new Set(near.map(x => x.a.cat))];
+  const item = ({ a, km }) => `<li class="act"><div class="act-h"><b>${esc(a.name)}</b> ${pill([ACT_CATEGORIES[a.cat] || a.cat, ''])}</div>
+    <div class="small muted">${fmtDist(km)}${km < 3 ? ' · ' + walkMin(km) + ' min à pied' : ''}${a.price > 0 ? ' · à partir de ' + mad(a.price) : a.price === 0 ? ' · gratuit' : ''}</div>
+    ${a.note ? `<div class="small">${esc(a.note)}</div>` : ''}
+    <a class="btn-link small" href="https://www.google.com/maps/search/?api=1&query=${a.geo.lat}%2C${a.geo.lng}" target="_blank" rel="noopener">Voir sur la carte</a></li>`;
+  return `<p class="small muted">Autour du logement, à titre indicatif (distances à vol d'oiseau depuis le secteur).</p>
+    <div class="actcats">${cats.map(c => `<span class="pill">${esc(ACT_CATEGORIES[c] || c)}</span>`).join(' ')}</div>
+    <ul class="actlist">${near.slice(0, 10).map(item).join('')}</ul>`;
+}
 const booking = id => S.bookings.find(b => b.id === id);
 const ticket = id => S.tickets.find(t => t.id === id);
 const category = id => S.categories.find(c => c.id === id);
@@ -1897,6 +1931,8 @@ const REQ_SOURCE = { whatsapp: 'WhatsApp', email: 'E-mail', site: 'Formulaire du
 const LISTING_STATUS = { published: ['Publiée', 'ok'], draft: ['Brouillon', ''], review: ['À valider', 'warn'], archived: ['Archivée', 'bad'] };
 // Mode de gestion d'un bien, choisi par le propriétaire : délégué (l'équipe gère tout) ou autonome (le propriétaire gère réservations et échanges).
 const MGMT_MODES = { delegue: ['Gestion déléguée', 'info'], autonome: ['Gestion autonome', 'ok'] };
+// Catégories d'activités à proximité (besoin « expériences à proximité »).
+const ACT_CATEGORIES = { culture: 'Culture et monuments', souks: 'Souks et artisanat', gastronomie: 'Gastronomie', bienetre: 'Hammam et bien-être', excursions: 'Excursions', sport: 'Sport et loisirs', pratique: 'Pratique' };
 const PAYOUT_STATUS = { 'programmé': ['Programmé', 'info'], 'versé': ['Versé', 'ok'], 'annulé': ['Annulé', ''] };
 const pill = ([label, cls]) => `<span class="pill ${cls || ''}">${esc(label)}</span>`;
 
@@ -2563,6 +2599,7 @@ SPACE.o_prop = p => {
       <div class="panel stack-s"><h3>Remise</h3>${discountOf(l) ? `<p>${discBadge(discountOf(l))} ${esc(l.discount.label || '')}</p>` : '<p class="small muted">Aucune remise en cours.</p>'}<button class="btn btn-g btn-s" data-act="ticketNew" data-type="question" data-listing="${l.id}" data-subject="Demande de remise sur « ${esc(l.title)} »" data-message="Je souhaite appliquer une remise de __ % pour les arrivées du __ au __.">Demander une remise</button><p class="small muted">L'équipe l'ajoute et elle s'affiche sur votre bien.</p></div>
       <div class="panel stack-s"><h3>Commission appliquée</h3><p><b>${rate.pct} %</b> du montant de l'hébergement · ${esc(rate.label)}</p>${btnGo('Détail du calcul', 'space', { tab: 'o_commission' })}</div>
     </div>
+    ${nearbyActivities(l).length ? `<div class="panel stack-s"><h3>À proximité</h3><p class="small muted">Activités autour de ce bien, à mettre en avant auprès de vos voyageurs.</p>${activitiesSection(l)}</div>` : ''}
     <div class="panel"><div class="panel-h"><h3>Séjours à venir pour ce bien</h3></div>${table(['Réf.', 'Voyageur', isAutonome(l) ? 'Contact' : '', 'Dates', '>Net'].filter((h, i) => i !== 2 || isAutonome(l)), bs.map(b => { const c = user(b.clientId); return `<tr><td class="mono">${esc(b.ref)}</td><td>${esc(isAutonome(l) ? c.name : shortName(c.name))}, ${b.guests} pers.</td>${isAutonome(l) ? `<td class="small">${esc(c.phone || '—')}<br>${esc(c.email || '')}</td>` : ''}<td class="num">${fmtD(b.start)} → ${fmtD(b.end)}</td><td class="r">${mad(b.payout.amount)}</td></tr>`; }), 'Aucun séjour à venir.')}</div>`;
 };
 SPACE.o_bookings = () => {
@@ -6150,6 +6187,7 @@ VIEWS.listing = p => {
           ${acc('Présentation', `<p style="max-width:68ch">${esc(l.description)}</p>${extra ? `<div class="facts">${extra}</div>` : ''}`, true)}
           ${l.amenities.length ? acc('Équipements', `<ul class="amen2">${l.amenities.map(x => `<li>${IC.check}${esc(x)}</li>`).join('')}</ul>`, true) : ''}
           ${acc('Arrivée et accès', `<p>Arrivée à partir de <b>${esc(l.checkIn)}</b>, départ avant <b>${esc(l.checkOut)}</b>. Arrivée autonome avec code.</p><p class="small muted">L'adresse exacte et le code d'accès sont communiqués uniquement au voyageur qui a réservé, après confirmation de son paiement.</p><div class="stack" id="l-map">${locationSection(l)}<div class="minimap">${mapBox([l], { zone: true })}</div><p class="small muted">Le logement se trouve dans ce secteur. L'adresse exacte est communiquée au voyageur après confirmation de sa réservation.</p></div>`)}
+          ${nearbyActivities(l).length ? acc('À proximité', activitiesSection(l), true) : ''}
           ${acc('Règlement et annulation', `<p><b>Règlement :</b> ${esc(l.rules)}</p><p><b>Annulation : ${POLICIES[l.policy].label}.</b> ${esc(POLICIES[l.policy].text)}</p><p><b>Ménage :</b> logement nettoyé avant votre arrivée. Aucuns frais de ménage à payer.</p>${l.registrationNo || !IS_VITRINE ? `<p class="small muted">N° d'autorisation ou d'enregistrement de l'hébergement : <span class="mono">${esc(l.registrationNo || 'non renseigné')}</span> <span class="val">À valider</span></p>` : ''}`, true)}
           ${IS_VITRINE ? '' : acc('Avis des voyageurs', reviewsSection(l))}
         </div>
