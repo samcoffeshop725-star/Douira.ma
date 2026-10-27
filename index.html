@@ -1680,6 +1680,9 @@ const user = id => S.users.find(u => u.id === id);
 const me = () => user(S.session.userId) || null;
 const role = () => (me() || {}).role || 'visitor';
 const listing = id => S.listings.find(l => l.id === id);
+const mgmtMode = l => (l && l.managementMode === 'autonome') ? 'autonome' : 'delegue';
+const isAutonome = l => mgmtMode(l) === 'autonome';
+const mgmtBadge = l => pill(MGMT_MODES[mgmtMode(l)]);
 const booking = id => S.bookings.find(b => b.id === id);
 const ticket = id => S.tickets.find(t => t.id === id);
 const category = id => S.categories.find(c => c.id === id);
@@ -1892,6 +1895,8 @@ const TICKET_STATUS = { ouverte: ['Ouverte', 'warn'], en_cours: ['En cours', 'in
 const REQ_STATUS = { nouvelle: ['Nouvelle', 'warn'], en_etude: ['En étude', 'info'], acceptee: ['Acceptée', 'ok'], refusee: ['Refusée', 'bad'] };
 const REQ_SOURCE = { whatsapp: 'WhatsApp', email: 'E-mail', site: 'Formulaire du site', telephone: 'Téléphone' };
 const LISTING_STATUS = { published: ['Publiée', 'ok'], draft: ['Brouillon', ''], review: ['À valider', 'warn'], archived: ['Archivée', 'bad'] };
+// Mode de gestion d'un bien, choisi par le propriétaire : délégué (l'équipe gère tout) ou autonome (le propriétaire gère réservations et échanges).
+const MGMT_MODES = { delegue: ['Gestion déléguée', 'info'], autonome: ['Gestion autonome', 'ok'] };
 const PAYOUT_STATUS = { 'programmé': ['Programmé', 'info'], 'versé': ['Versé', 'ok'], 'annulé': ['Annulé', ''] };
 const pill = ([label, cls]) => `<span class="pill ${cls || ''}">${esc(label)}</span>`;
 
@@ -2228,6 +2233,7 @@ VIEWS.propose = () => {
         ${field('Ville', `<select id="pr-city" name="city" required>${opt('', 'Choisir…', '')}${openCities().map(c => opt(c, c, '')).join('')}</select>`)}
         ${field('Quartier', '<input id="pr-area" name="area">')}${field('Type de bien', '<input id="pr-kind" name="kind" placeholder="Ex. villa 4 chambres avec piscine">')}
         ${field('Votre message', '<textarea id="pr-msg" name="message" placeholder="Surface, équipements, disponibilités, autorisation d\'exploitation…"></textarea>', '', 'full')}
+        ${field('Mode de gestion souhaité', `<select id="pr-mode" name="mgmtMode"><option value="delegue">Gestion déléguée — l'équipe s'occupe de tout (réservations, clients, ménage)</option><option value="autonome">Gestion autonome — je gère mes réservations et j'échange avec les voyageurs</option></select>`, 'Vous pourrez en rediscuter avec l\'équipe avant la mise en ligne.', 'full')}
         <label class="check full"><input type="checkbox" id="pr-consent" name="consent" required> <span>J'accepte que mes coordonnées soient utilisées pour traiter ma demande (loi 09-08). Elles ne sont pas partagées avec des tiers.</span></label>
         <div class="full"><button class="btn btn-p" type="submit">Envoyer ma demande</button></div>
       </div></form>
@@ -2533,15 +2539,19 @@ SPACE.o_dash = () => {
     <div class="panel"><div class="panel-h"><h3>Prochaines arrivées</h3>${btnGo('Toutes les réservations', 'space', { tab: 'o_bookings' })}</div>
       ${table(['Réf.', 'Bien', 'Voyageur', 'Dates', '>Net pour vous'], upcoming.slice(0, 5).map(b => `<tr><td class="mono">${esc(b.ref)}</td><td>${esc(listing(b.listingId).title)}</td><td>${esc(shortName(user(b.clientId).name))}, ${b.guests} pers.</td><td class="num">${fmtD(b.start)} → ${fmtD(b.end)}</td><td class="r">${mad(b.payout.amount)}</td></tr>`), 'Aucune arrivée prévue.')}</div>`;
 };
-SPACE.o_props = () => `${head('Mes biens', 'Les annonces sont créées et publiées par l\'équipe. Demandez une modification depuis la fiche de chaque bien.')}
-  <div class="lgrid">${ownerListings().map(l => `<div class="stack-s"><button class="lcard" data-act="go" data-to="space" data-tab="o_prop" data-id="${l.id}"><span class="ph"><img src="${lphoto(l, 0)}" alt=""><span class="badge">${LISTING_STATUS[l.status][0]}</span></span><h3>${esc(l.title)}</h3><span class="small muted">${esc(l.area)}, ${esc(l.city)} · ${mad(l.prices[tplOf(l).units[0]])} / ${UNIT_LABEL[tplOf(l).units[0]]}</span></button></div>`).join('') || '<div class="empty">Aucun bien pour le moment.</div>'}</div>`;
+SPACE.o_props = () => `${head('Mes biens', 'Chaque bien porte son mode de gestion : en autonome vous gérez vous-même, en déléguée l\'équipe s\'en charge. Ouvrez une fiche pour le détail ou pour changer de mode.')}
+  <div class="lgrid">${ownerListings().map(l => `<div class="stack-s"><button class="lcard" data-act="go" data-to="space" data-tab="o_prop" data-id="${l.id}"><span class="ph"><img src="${lphoto(l, 0)}" alt=""><span class="badge">${LISTING_STATUS[l.status][0]}</span></span><h3>${esc(l.title)}</h3><div style="margin:3px 0">${mgmtBadge(l)}</div><span class="small muted">${esc(l.area)}, ${esc(l.city)} · ${mad(l.prices[tplOf(l).units[0]])} / ${UNIT_LABEL[tplOf(l).units[0]]}</span></button></div>`).join('') || '<div class="empty">Aucun bien pour le moment.</div>'}</div>`;
 SPACE.o_prop = p => {
   const l = listing(p.id), u = me();
   if (!l || l.ownerId !== u.id) return '<div class="empty">Bien introuvable.</div>';
   const tpl = tplOf(l), cl = cleaner(l.cleanerId), rate = rateFor(l);
   const revealed = p.reveal === '1';
   const bs = S.bookings.filter(b => b.listingId === l.id && b.status === 'confirmed' && checkoutDT(b) > new Date());
-  return `${back('o_props', 'Mes biens')}${head(l.title, `${esc(l.area)}, ${esc(l.city)}`, pill(LISTING_STATUS[l.status]) + btnGo('Voir l\'annonce', 'listing', { id: l.id }))}
+  return `${back('o_props', 'Mes biens')}${head(l.title, `${esc(l.area)}, ${esc(l.city)}`, pill(LISTING_STATUS[l.status]) + ' ' + mgmtBadge(l) + btnGo('Voir l\'annonce', 'listing', { id: l.id }))}
+    <div class="panel stack-s"><div class="panel-h"><h3>Mode de gestion</h3>${mgmtBadge(l)}</div>
+      <p>${isAutonome(l) ? 'Vous gérez ce bien vous-même : vous suivez les réservations et vous échangez directement avec les voyageurs (coordonnées visibles ci-dessous).' : 'L\'équipe gère ce bien pour vous : réservations, messagerie et coordonnées des voyageurs. Vous gardez une vue sur les séjours et les revenus.'}</p>
+      <div class="row"><button class="btn btn-g btn-s" data-act="ownerSwitchMode" data-id="${l.id}">Passer en ${isAutonome(l) ? 'gestion déléguée' : 'gestion autonome'}</button></div>
+      <p class="small muted">Le changement n'est possible qu'entre deux séjours ; il est enregistré dans le journal.</p></div>
     <div class="two">
       <div class="panel stack"><h3>Ce que voient les voyageurs</h3><div>${ratingLine(l)}</div><dl class="kv"><dt>Votre prix</dt><dd>${tpl.units.map(un => mad(l.prices[un]) + ' / ' + UNIT_LABEL[un]).join(' · ')}</dd><dt>Capacité</dt><dd>${l.capacity}</dd><dt>Arrivée / départ</dt><dd>${esc(l.checkIn)} / ${esc(l.checkOut)}</dd><dt>Annulation</dt><dd>${POLICIES[l.policy].label}</dd><dt>Règlement</dt><dd>${esc(l.rules)}</dd><dt>N° d'autorisation</dt><dd class="mono">${esc(l.registrationNo || 'non renseigné')}</dd></dl>
         <button class="btn btn-g btn-s" data-act="ticketNew" data-type="question" data-listing="${l.id}" data-subject="Demande de modification : ${esc(l.title)}">Demander une modification</button></div>
@@ -2553,12 +2563,12 @@ SPACE.o_prop = p => {
       <div class="panel stack-s"><h3>Remise</h3>${discountOf(l) ? `<p>${discBadge(discountOf(l))} ${esc(l.discount.label || '')}</p>` : '<p class="small muted">Aucune remise en cours.</p>'}<button class="btn btn-g btn-s" data-act="ticketNew" data-type="question" data-listing="${l.id}" data-subject="Demande de remise sur « ${esc(l.title)} »" data-message="Je souhaite appliquer une remise de __ % pour les arrivées du __ au __.">Demander une remise</button><p class="small muted">L'équipe l'ajoute et elle s'affiche sur votre bien.</p></div>
       <div class="panel stack-s"><h3>Commission appliquée</h3><p><b>${rate.pct} %</b> du montant de l'hébergement · ${esc(rate.label)}</p>${btnGo('Détail du calcul', 'space', { tab: 'o_commission' })}</div>
     </div>
-    <div class="panel"><div class="panel-h"><h3>Séjours à venir pour ce bien</h3></div>${table(['Réf.', 'Voyageur', 'Dates', '>Net'], bs.map(b => `<tr><td class="mono">${esc(b.ref)}</td><td>${esc(shortName(user(b.clientId).name))}</td><td class="num">${fmtD(b.start)} → ${fmtD(b.end)}</td><td class="r">${mad(b.payout.amount)}</td></tr>`), 'Aucun séjour à venir.')}</div>`;
+    <div class="panel"><div class="panel-h"><h3>Séjours à venir pour ce bien</h3></div>${table(['Réf.', 'Voyageur', isAutonome(l) ? 'Contact' : '', 'Dates', '>Net'].filter((h, i) => i !== 2 || isAutonome(l)), bs.map(b => { const c = user(b.clientId); return `<tr><td class="mono">${esc(b.ref)}</td><td>${esc(isAutonome(l) ? c.name : shortName(c.name))}, ${b.guests} pers.</td>${isAutonome(l) ? `<td class="small">${esc(c.phone || '—')}<br>${esc(c.email || '')}</td>` : ''}<td class="num">${fmtD(b.start)} → ${fmtD(b.end)}</td><td class="r">${mad(b.payout.amount)}</td></tr>`; }), 'Aucun séjour à venir.')}</div>`;
 };
 SPACE.o_bookings = () => {
   const bs = ownerBookings();
-  return `${head('Réservations', 'Les coordonnées complètes des voyageurs restent gérées par l\'équipe ; vous voyez le prénom, l\'initiale et le nombre de voyageurs.')}
-    ${table(['Réf.', 'Bien', 'Voyageur', 'Dates', 'Statut', '>Hébergement', '>Net'], bs.map(b => `<tr><td class="mono">${esc(b.ref)}</td><td>${esc(listing(b.listingId).title)}</td><td>${esc(shortName(user(b.clientId).name))}, ${b.guests} pers.</td><td class="num" style="white-space:nowrap">${fmtD(b.start)} → ${fmtD(b.end)}</td><td>${pill(displayStatus(b))}</td><td class="r">${mad(b.q.ownerBase ?? b.q.base)}</td><td class="r">${mad(b.payout.amount)}</td></tr>`), 'Aucune réservation.')}`;
+  return `${head('Réservations', 'Pour vos biens en gestion autonome, vous voyez le voyageur et ses coordonnées pour échanger directement. Pour les biens délégués, l\'équipe gère les coordonnées ; vous voyez le prénom et l\'initiale.')}
+    ${table(['Réf.', 'Bien', 'Voyageur', 'Dates', 'Statut', '>Hébergement', '>Net'], bs.map(b => { const l = listing(b.listingId), c = user(b.clientId); return `<tr><td class="mono">${esc(b.ref)}</td><td>${esc(l.title)} ${mgmtBadge(l)}</td><td>${esc(isAutonome(l) ? c.name : shortName(c.name))}, ${b.guests} pers.${isAutonome(l) ? `<div class="small muted">${esc(c.phone || '')}</div>` : ''}</td><td class="num" style="white-space:nowrap">${fmtD(b.start)} → ${fmtD(b.end)}</td><td>${pill(displayStatus(b))}</td><td class="r">${mad(b.q.ownerBase ?? b.q.base)}</td><td class="r">${mad(b.payout.amount)}</td></tr>`; }), 'Aucune réservation.')}`;
 };
 SPACE.o_earnings = () => {
   const bs = ownerBookings().filter(b => b.payout);
@@ -2653,7 +2663,7 @@ SPACE.t_listings = p => {
       <select id="ls-s" data-chg="filter" data-tab="t_listings" data-key="status">${opt('', 'Tous les statuts', p.status)}${Object.entries(LISTING_STATUS).map(([k, v]) => opt(k, v[0], p.status)).join('')}</select>
       <select id="ls-c" data-chg="filter" data-tab="t_listings" data-key="cat">${opt('', 'Toutes les catégories', p.cat)}${S.categories.map(c => opt(c.id, c.name + (c.active ? '' : ' (masquée)'), p.cat)).join('')}</select></div>
     ${table(['', 'Annonce', 'Propriétaire', 'Catégorie', '>Prix', 'Statut', 'Actions'], list.map(l => { const c = category(l.categoryId), u0 = tplOf(l).units[0];
-      return `<tr><td><img class="thumb" src="${lphoto(l, 0)}" alt=""></td><td><b>${esc(l.title)}</b><div style="margin-block:3px">${l.diamond ? diamondBadge() : ratingInline(listingRating(l.id), 'Aucun avis')}</div><div class="small muted">${esc(l.area)}, ${esc(l.city)}${l.collaborators.length ? ' · suivi : ' + l.collaborators.map(id => firstName((user(id) || {}).name)).join(', ') : ''}</div></td>
+      return `<tr><td><img class="thumb" src="${lphoto(l, 0)}" alt=""></td><td><b>${esc(l.title)}</b><div style="margin-block:3px">${l.diamond ? diamondBadge() : ratingInline(listingRating(l.id), 'Aucun avis')} ${mgmtBadge(l)}</div><div class="small muted">${esc(l.area)}, ${esc(l.city)}${l.collaborators.length ? ' · suivi : ' + l.collaborators.map(id => firstName((user(id) || {}).name)).join(', ') : ''}</div></td>
       <td>${esc((user(l.ownerId) || {}).name || '—')}</td><td>${esc(c.name)}${c.active ? '' : ' <span class="pill">masquée</span>'}</td><td class="r">${mad(pubPrice(l, u0))}<div class="small muted">/ ${UNIT_LABEL[u0]} · propriétaire ${mad(l.prices[u0])}</div></td><td>${pill(LISTING_STATUS[l.status])}</td>
       <td><div class="row" style="gap:6px">${btnGo('Modifier', 'space', { tab: 't_listing', id: l.id })}${btnGo('Aperçu', 'listing', { id: l.id })}${can('listings.share') ? `<button class="btn btn-g btn-s" data-act="share" data-id="${l.id}">Partager</button>` : ''}${can('discounts.manage') ? `<button class="btn btn-g btn-s" data-act="discountEdit" data-id="${l.id}">${discountOf(l) ? 'Remise −' + l.discount.pct + ' %' : 'Remise'}</button>` : ''}${can('listings.diamond') ? `<button class="btn btn-g btn-s" data-act="diamondToggle" data-id="${l.id}">${l.diamond ? 'Retirer Diamond' : 'Diamond'}</button>` : ''}${can('listings.publish') ? `<button class="btn btn-g btn-s" data-act="listingToggle" data-id="${l.id}">${l.status === 'published' ? 'Retirer' : 'Publier'}</button>` : ''}</div></td></tr>`; }), 'Aucune annonce ne correspond.')}`;
 };
@@ -2671,7 +2681,7 @@ function shareModal(l) {
 
 SPACE.t_listing = p => {
   const isNew = p.id === 'new';
-  const l0 = isNew ? { id: 'new', categoryId: 'cat_apartments', ownerId: '', status: 'draft', title: '', city: '', area: '', description: '', prices: {}, capacity: 2, attrs: {}, amenities: [], checkIn: '15:00', checkOut: '11:00', policy: 'moderee', rules: 'Logement non-fumeur. Fêtes non autorisées.', registrationNo: '', art: 0, address: '', accessCode: '', wifi: '', cleanerId: '', collaborators: [] } : listing(p.id);
+  const l0 = isNew ? { id: 'new', categoryId: 'cat_apartments', ownerId: '', status: 'draft', title: '', city: '', area: '', description: '', prices: {}, capacity: 2, attrs: {}, amenities: [], checkIn: '15:00', checkOut: '11:00', policy: 'moderee', rules: 'Logement non-fumeur. Fêtes non autorisées.', registrationNo: '', art: 0, address: '', accessCode: '', wifi: '', cleanerId: '', collaborators: [], managementMode: 'delegue' } : listing(p.id);
   if (!l0) return '<div class="empty">Annonce introuvable.</div>';
   const l = Object.assign({}, l0, p.draft || {});
   const cat = category(l.categoryId) || S.categories[0], tpl = TEMPLATES[cat.templateId];
@@ -2684,6 +2694,7 @@ SPACE.t_listing = p => {
       <fieldset class="fgrid"><legend>Classement</legend>
         ${field('Catégorie', `<select name="categoryId" id="le-cat" data-chg="editorCat">${S.categories.map(c => opt(c.id, c.name + (c.active ? '' : ' (masquée)'), l.categoryId)).join('')}</select>`)}
         ${field('Propriétaire', `<select name="ownerId" id="le-owner" required>${opt('', 'Choisir…', l.ownerId)}${owners().map(o => opt(o.id, o.name, l.ownerId)).join('')}</select>`)}
+        ${field('Mode de gestion', `<select name="managementMode" id="le-mode">${Object.entries(MGMT_MODES).map(([k, v]) => opt(k, v[0], mgmtMode(l))).join('')}</select>`, 'Autonome : le propriétaire gère réservations et échanges avec les clients. Déléguée : l\'équipe gère tout.')}
         ${field('Statut', `<select name="status" id="le-status">${Object.entries(LISTING_STATUS).filter(([k]) => can('listings.publish') || k !== 'published' || l0.status === 'published').map(([k, v]) => opt(k, v[0], l.status)).join('')}</select>`, can('listings.publish') ? '' : 'La publication est réservée aux rôles autorisés.')}
         ${field('Illustration', `<select name="art" id="le-art">${PALS.map((_, i) => opt(i, 'Palette ' + (i + 1), l.art)).join('')}</select>`, 'Remplacée par les vraies photos en production.')}
       </fieldset>
@@ -2735,6 +2746,7 @@ function readListingForm(form) {
     capacity: Math.max(1, Number(o.capacity || 1)), prices, description: o.description || '', attrs, amenities: fd.getAll('amenities'),
     checkIn: o.checkIn || '15:00', checkOut: o.checkOut || '11:00', policy: o.policy, registrationNo: o.registrationNo || '', rules: o.rules || '',
     titleEn: (o.titleEn || '').trim(), descriptionEn: (o.descriptionEn || '').trim(), rulesEn: (o.rulesEn || '').trim(),
+    managementMode: o.managementMode === 'autonome' ? 'autonome' : 'delegue',
     address: o.address || '', geo: (g => g && g !== 'invalid' ? g : null)(parseGeo(o.lat, o.lng)), newCode: o.accessCode || '', wifi: o.wifi || '', cleanerId: o.cleanerId || '', collaborators: fd.getAll('collaborators')
   };
 }
@@ -3108,6 +3120,16 @@ A.dataRequest = d => {
   toast(`Demande ${t.ref} transmise à l'équipe.`); render();
 };
 A.revealOwner = d => { const l = listing(d.id); if (!canRevealCode(l)) return toast('Action non autorisée.', true); audit("Code d'accès affiché par le propriétaire", l.title); go('space', { tab: 'o_prop', id: l.id, reveal: '1' }); };
+A.ownerSwitchMode = d => {
+  const l = listing(d.id), u = me();
+  if (!l || !u || l.ownerId !== u.id) return toast('Action non autorisée.', true);
+  const ongoing = S.bookings.some(b => b.listingId === l.id && b.status === 'confirmed' && parseD(b.start) <= new Date() && checkoutDT(b) > new Date());
+  if (ongoing) return toast('Changement impossible pendant un séjour en cours. Réessayez entre deux séjours.', true);
+  l.managementMode = isAutonome(l) ? 'delegue' : 'autonome';
+  audit('Mode de gestion changé par le propriétaire', `${l.title} → ${MGMT_MODES[mgmtMode(l)][0]}`);
+  toast(`Ce bien est maintenant en ${MGMT_MODES[mgmtMode(l)][0].toLowerCase()}.`);
+  render();
+};
 A.revealTeam = d => {
   const l = listing(d.id); if (!canRevealCode(l)) return toast("Vous n'êtes pas autorisé à afficher ce code.", true);
   audit("Code d'accès affiché", l.title); save();
@@ -3134,7 +3156,7 @@ A.reqConvert = d => {
     addEmail({ toUserId: o.id, toEmail: o.email, audience: 'owner', kind: 'invite', subject: `Activez votre espace propriétaire ${S.settings.siteName}` });
   }
   const isVilla = /villa/i.test(r.kind || '') && category('cat_villas');
-  const l = { id: uid('l'), categoryId: isVilla ? 'cat_villas' : 'cat_apartments', ownerId: o.id, status: 'draft', title: `${r.kind || (isVilla ? 'Villa' : 'Appartement')} à ${r.city}`, city: CITIES.includes(r.city) ? r.city : '', area: r.area || '', description: r.message || '', prices: { nuit: 0 }, capacity: 2, attrs: {}, amenities: [], checkIn: '15:00', checkOut: '11:00', policy: 'moderee', rules: 'Logement non-fumeur. Fêtes non autorisées.', registrationNo: '', art: S.listings.length % PALS.length, address: '', accessCode: '', wifi: '', cleanerId: '', collaborators: u.role === 'collaborator' ? [u.id] : [], createdAt: nowIso() };
+  const l = { id: uid('l'), categoryId: isVilla ? 'cat_villas' : 'cat_apartments', ownerId: o.id, status: 'draft', title: `${r.kind || (isVilla ? 'Villa' : 'Appartement')} à ${r.city}`, city: CITIES.includes(r.city) ? r.city : '', area: r.area || '', description: r.message || '', prices: { nuit: 0 }, capacity: 2, attrs: {}, amenities: [], checkIn: '15:00', checkOut: '11:00', policy: 'moderee', rules: 'Logement non-fumeur. Fêtes non autorisées.', registrationNo: '', managementMode: r.mgmtMode === 'autonome' ? 'autonome' : 'delegue', art: S.listings.length % PALS.length, address: '', accessCode: '', wifi: '', cleanerId: '', collaborators: u.role === 'collaborator' ? [u.id] : [], createdAt: nowIso() };
   S.listings.push(l); r.status = 'acceptee'; r.listingId = l.id;
   audit('Demande convertie en annonce (brouillon)', r.name);
   closeModal(); toast(created ? 'Compte propriétaire créé, invitation envoyée, annonce en brouillon.' : 'Annonce en brouillon créée pour ce propriétaire.');
@@ -3231,7 +3253,7 @@ F.checkout = (data, form) => {
   go('pay', { id: b.id });
 };
 F.propose = data => {
-  const r = { id: uid('rq'), source: 'site', name: data.name, phone: data.phone, email: data.email, city: data.city, area: data.area, kind: data.kind, message: data.message, status: 'nouvelle', at: nowIso(), notes: '' };
+  const r = { id: uid('rq'), source: 'site', name: data.name, phone: data.phone, email: data.email, city: data.city, area: data.area, kind: data.kind, message: data.message, mgmtMode: data.mgmtMode === 'autonome' ? 'autonome' : 'delegue', status: 'nouvelle', at: nowIso(), notes: '' };
   S.requests.unshift(r);
   addEmail({ toUserId: null, toEmail: S.settings.adminEmail, audience: 'admin', kind: 'request_new', requestId: r.id, subject: `Nouvelle demande propriétaire : ${r.name} (${r.city})` });
   render();
