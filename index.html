@@ -2829,14 +2829,14 @@ SPACE.t_listings = p => {
 };
 function shareModal(l) {
   if (l.status !== 'published' || !category(l.categoryId).active) return openModal(`<h2>Partager l'annonce</h2><p>Cette annonce n'est pas visible publiquement. Publiez-la (dans une catégorie active) avant de la partager.</p><button class="btn btn-g" data-act="closeModal">Fermer</button>`);
-  const link = `https://douira.example/annonces/${l.id}`;
+  const link = listingUrl(l);
   const txt = `${l.title} (${l.area}, ${l.city}) · à partir de ${mad(pubPrice(l))} / ${UNIT_LABEL[tplOf(l).units[0]]}. Réservez en ligne : ${link}`;
   audit('Annonce partagée', l.title);
   openModal(`<h2>Partager l'annonce</h2><p class="small muted">Le lien et le message ne contiennent jamais l'adresse exacte ni le code d'accès.</p>
     ${field('Lien public', `<div class="row"><input id="sh-link" readonly value="${esc(link)}" class="grow" style="flex:1">${copyBtn(link)}</div>`)}
     ${field('Message prêt à envoyer', `<textarea id="sh-txt" readonly>${esc(txt)}</textarea>`)}
     <div class="row">${copyBtn(txt, 'Copier le message')}<a class="btn btn-p btn-s" href="https://wa.me/?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">Partager sur WhatsApp</a><button class="btn btn-g btn-s" data-act="closeModal">Fermer</button></div>
-    <p class="small muted">Lien de démonstration : le nom de domaine réel reste à configurer.</p>`);
+    <p class="small muted">Le lien ouvre directement la fiche de ce logement.</p>`);
 }
 
 SPACE.t_listing = p => {
@@ -3230,6 +3230,19 @@ A.closeModal = closeModal;
 A.copy = d => {
   try { navigator.clipboard.writeText(d.text).then(() => toast('Copié.'), () => toast('Copie impossible ici : sélectionnez le texte.', true)); }
   catch (e) { toast('Copie impossible ici : sélectionnez le texte.', true); }
+};
+// Lien public réel d'un bien : base du site (siteUrl ou page courante) + #annonce-<id>
+function listingUrl(l) {
+  let base = (S.settings.siteUrl || (typeof location !== 'undefined' ? location.origin + location.pathname : '')).replace(/[#?].*$/, '').replace(/\/+$/, '');
+  return base + '/#annonce-' + l.id;
+}
+// Partage d'un bien : menu de partage natif du téléphone si dispo, sinon copie du lien.
+A.shareListing = d => {
+  const l = listing(d.id); if (!l) return;
+  const url = listingUrl(l), text = `${l.title} — ${l.area}, ${l.city} · ${S.settings.siteName}`;
+  if (typeof navigator !== 'undefined' && navigator.share) { navigator.share({ title: l.title, text, url }).catch(() => {}); return; }
+  try { navigator.clipboard.writeText(url).then(() => toast('Lien copié : ' + url), () => toast('Lien : ' + url, true)); }
+  catch (e) { toast('Lien : ' + url, true); }
 };
 
 A.book = d => {
@@ -3897,7 +3910,7 @@ function favListHtml(f, editing) {
         <span class="row small" style="gap:8px">${state}${q ? `<b class="num">${mad(q.total)}</b> <span class="muted">pour ${plural(q.qty, 'nuit')}</span>${budget ? (q.total <= budget ? ' <span class="pill ok">Dans le budget</span>' : ` <span class="pill warn">+${mad(q.total - budget)} sur le budget</span>`) : ''}` : `<span class="muted">${mad(pubPrice(l))} / ${UNIT_LABEL[tplOf(l).units[0]]}</span>`}</span></div>
       <div class="row acts" style="gap:6px">${live ? (ok ? btnGo('Réserver', 'listing', { id: l.id, start: f.start, end: f.end, guests: f.guests }, 'btn btn-p btn-s') : btnGo('Voir', 'listing', { id: l.id })) : ''}${extLink(gmapsArea(l), PIN_SVG, 'Carte')}<button class="btn btn-g btn-s" data-act="favRemove" data-list="${f.id}" data-id="${l.id}">Retirer</button></div></div>`;
   }).join('');
-  const shareTxt = `${f.name}${planned ? ` (du ${fmtD(f.start)} au ${fmtD(f.end)}, ${f.guests} voyageurs)` : ''}\n` + items.map(({ l }) => `• ${l.title} (${l.city}) : https://douira.example/annonces/${l.id}`).join('\n');
+  const shareTxt = `${f.name}${planned ? ` (du ${fmtD(f.start)} au ${fmtD(f.end)}, ${f.guests} voyageurs)` : ''}\n` + items.map(({ l }) => `• ${l.title} (${l.city}) : ${listingUrl(l)}`).join('\n');
   return `<section class="panel stack favlist">
     <div class="row between"><div class="stack-s" style="gap:2px"><h2 style="font-size:1.4rem">${esc(f.name)}</h2>
       <span class="small muted">${plural(items.length, 'logement')}${planned ? ` · du ${fmtD(f.start)} au ${fmtD(f.end)} · ${plural(Number(f.guests), 'voyageur')}${f.budget ? ' · budget ' + mad(f.budget) : ''}` : ' · voyage pas encore planifié'}</span>
@@ -4864,6 +4877,7 @@ function vitrineState() {
   const c = VCFG, st = S.settings;
   ['siteName', 'markupPct'].forEach(k => { if (c[k] !== undefined && c[k] !== '') st[k] = c[k]; });
   st.whatsapp = c.whatsapp || '';   // vide dans config.js : aucun numéro affiché (jamais celui de la démonstration)
+  st.siteUrl = c.siteUrl || '';     // adresse publique du site (pour les liens de partage)
   st.contactEmail = c.email || '';
   st.adminEmail = c.email || '';
   st.serviceFeePct = 0; st.showPctToClients = false; st.touristTax = 0;
@@ -6447,7 +6461,7 @@ VIEWS.listing = p => {
       <div class="vh-top"><button type="button" class="rbtn" data-act="back" aria-label="Retour">${IC2.back}</button><span class="row" style="gap:8px">${isTeam() && can('listings.share') ? `<button class="rbtn" data-act="share" data-id="${l.id}" aria-label="Partager">${IC2.share}</button>` : ''}${heartBtn(l)}</span></div>
       <div class="vh-title lhead"><h1>${esc(l.title)}</h1><div class="row" style="gap:12px"><span class="row" style="gap:5px">${IC.pin}${esc(l.area)}, ${esc(l.city)}</span>${ratingLine(l)}${discountOf(l) ? discBadge(discountOf(l)) : ''}</div></div></div>
     <div class="vpanel"><div class="meta"><span class="pill">${esc(cat.name.replace(/s$/, ''))}${l.diamond ? ' · Diamond' : ''}</span><span class="small">${tpl.mode === 'stay' ? `Arrivée dès <b>${esc(l.checkIn)}</b> · départ avant <b>${esc(l.checkOut)}</b>` : `${plural(l.capacity, 'place')}`}</span></div>
-      <div class="vacts"><button type="button" data-act="scrollTo" data-to="l-map"><span class="c">${IC2.map}</span>Secteur</button><button type="button" data-act="go" data-to="contact"><span class="c">${IC2.phone}</span>Contact</button><button type="button" data-act="copy" data-text="${esc(shareTxt)}"><span class="c">${IC2.share}</span>Partager</button></div></div>
+      <div class="vacts"><button type="button" data-act="scrollTo" data-to="l-map"><span class="c">${IC2.map}</span>Secteur</button><button type="button" data-act="go" data-to="contact"><span class="c">${IC2.phone}</span>Contact</button><button type="button" data-act="shareListing" data-id="${l.id}"><span class="c">${IC2.share}</span>Partager</button></div></div>
     ${l.diamond ? diamondBand() : ''}
     <div class="ldetail">
       <div class="stack-l">
