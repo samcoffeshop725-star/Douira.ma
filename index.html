@@ -4670,7 +4670,7 @@ function vitrineState() {
     const villa = /villa/i.test(b.type || '');
     const disc = b.remise && Number(b.remise.pourcentage) > 0 ? { pct: Number(b.remise.pourcentage), label: b.remise.libelle || '', labelEn: b.remise.libelleEn || '', from: b.remise.du || '', to: b.remise.au || '' } : null;
     return {
-      id: 'b' + (b.id || i + 1), categoryId: villa ? 'cat_villas' : 'cat_apartments', ownerId: '', status: 'published',
+      id: 'b' + (b.id || i + 1), categoryId: villa ? 'cat_villas' : 'cat_apartments', ownerId: '', status: 'published', managementMode: b.modeGestion === 'autonome' ? 'autonome' : 'delegue',
       title: b.titre || 'Logement', titleEn: b.titreEn || '', city: b.ville || city, area: b.quartier || '', art: i,
       prices: { nuit: Number(b.prixNuit || 0) }, capacity: Number(b.voyageurs || 2),
       attrs: { bedrooms: Number(b.chambres || 0), bathrooms: Number(b.sallesDeBain || 0), surface: Number(b.surface || 0) || undefined },
@@ -4681,6 +4681,12 @@ function vitrineState() {
       diamond: b.diamond ? { at: nowIso(), by: 'config' } : null, discount: disc, collaborators: [], cleanerId: '', address: '', accessCode: '', createdAt: nowIso()
     };
   }).filter(l => l.prices.nuit > 0);
+  // Activités à proximité définies dans config.js (facultatif) : affichées sur la fiche d'un bien.
+  S.activities = (Array.isArray(c.activites) ? c.activites : []).map((a, i) => ({
+    id: 'a' + (a.id || i + 1), name: a.nom || 'Activité', cat: ACT_CATEGORIES[a.categorie] ? a.categorie : 'culture',
+    geo: a.position && a.position.lat ? { lat: Number(a.position.lat), lng: Number(a.position.lng) } : null,
+    price: (a.prix === 0 || a.prix) ? Number(a.prix) : undefined, note: a.note || ''
+  })).filter(a => a.geo);
   S.users = []; S.bookings = []; S.emails = []; S.tickets = []; S.requests = []; S.audit = []; S.reviews = []; S.favLists = []; S.cleaners = [];
   S.extras = (Array.isArray(c.vehicules) ? c.vehicules : []).map((x, i) => ({ id: 'v' + (i + 1), type: /moto|scooter/i.test(x.type || '') ? 'moto' : 'voiture', name: x.nom || 'Véhicule', specs: x.description || '', specsEn: x.descriptionEn || '', pricePerDay: Number(x.prixJour || 0), deposit: Number(x.caution || 0), active: true, blocks: [], photoUrl: x.photo || '' })).filter(x => x.pricePerDay > 0);
   S.session.userId = null;
