@@ -6997,7 +6997,7 @@ window.addEventListener('load', () => { fxRefresh(); });
    ici : le client est redirigé vers la page du prestataire de paiement.
    ===================================================================== */
 if (IS_ONLINE) {
-  const ONLINE = { csrf: '', unavail: {}, bookings: null, booking: {}, card: null, loading: {}, biens: null, acts: null };
+  const ONLINE = { csrf: '', unavail: {}, bookings: null, booking: {}, card: null, loading: {}, biens: null, acts: null, accounts: null };
   const AUTH_COPY = { title: 'Connexion', register: 'Créer un compte' };
 
   /* ---------- Appels API : même origine, cookie de session, jeton anti-CSRF ---------- */
@@ -7015,7 +7015,7 @@ if (IS_ONLINE) {
   // Le compte connecté est représenté comme un utilisateur du site (me(), role() fonctionnent sans changement)
   function setUser(u, csrf) {
     if (u) { const role = ['admin', 'collaborator', 'owner', 'agency'].includes(u.role) ? u.role : 'client'; S.users = [{ id: u.id, name: u.name, email: u.email, phone: u.phone || '', role, createdAt: u.createdAt, memberNo: u.memberNo, mustChangePassword: !!u.mustChangePassword }]; S.session.userId = u.id; ONLINE.csrf = csrf || ONLINE.csrf; }
-    else { S.users = []; S.session.userId = null; ONLINE.csrf = ''; ONLINE.bookings = null; ONLINE.booking = {}; ONLINE.card = null; ONLINE.biens = null; ONLINE.acts = null; }
+    else { S.users = []; S.session.userId = null; ONLINE.csrf = ''; ONLINE.bookings = null; ONLINE.booking = {}; ONLINE.card = null; ONLINE.biens = null; ONLINE.acts = null; ONLINE.accounts = null; }
   }
   // Chargement différé : la vue affiche un espace réservé, la donnée arrive puis la page est redessinée
   function lazy(key, loader) {
@@ -7276,7 +7276,7 @@ if (IS_ONLINE) {
   NAV.owner = [['o_biens', 'Mes biens'], ['c_profile', 'Mon profil']];
   NAV.agency = [['g_acts', 'Mes activités'], ['c_profile', 'Mon profil']];
   NAV.collab = [['t_biens', 'Biens'], ['c_profile', 'Mon profil']];
-  navFor = function (r) { return r === 'client' ? NAV.client : r === 'owner' ? NAV.owner : r === 'agency' ? NAV.agency : r === 'collaborator' ? NAV.collab : NAV.team.concat([['t_biens', 'Biens'], ['t_acts', 'Activités']]); };
+  navFor = function (r) { return r === 'client' ? NAV.client : r === 'owner' ? NAV.owner : r === 'agency' ? NAV.agency : r === 'collaborator' ? NAV.collab : NAV.team.concat([['t_biens', 'Biens'], ['t_acts', 'Activités'], ['a_users', 'Comptes']]); };
   // Retour « ← » depuis un éditeur vers sa liste
   Object.assign(DETAIL_PARENT, { o_bien: 'o_biens', t_bien: 't_biens', g_act: 'g_acts', t_act: 't_acts' });
 
@@ -7407,13 +7407,49 @@ if (IS_ONLINE) {
   };
   A.olActPublish = async d => { try { await api('POST', `/api/admin/catalog/activities/${encodeURIComponent(d.id)}/publish`, { publish: d.pub === '1' }); ONLINE.acts = null; toast(d.pub === '1' ? 'Activité publiée.' : 'Activité retirée.'); render(); } catch (e) { toast(e.message, true); } };
 
+  /* -- Comptes (admin uniquement) : créer/inviter propriétaires, collaborateurs, agences --
+     Un compte créé est « invité » : la personne choisit son mot de passe via un lien (e-mail si la
+     messagerie est configurée, sinon l'admin copie le lien). L'admin peut suspendre/réactiver et changer le rôle. */
+  const ROLE_OPTS = [['owner', 'Propriétaire'], ['collaborator', 'Collaborateur'], ['agency', 'Agence'], ['client', 'Client']];
+  const roleLabel = r => ROLE_LABEL[r] || r;
+  const statusPill = s => pill(s === 'actif' ? ['Actif', 'ok'] : s === 'suspendu' ? ['Suspendu', 'bad'] : ['Invité', 'info']);
+  const loadAccounts = () => lazy('accounts', async () => { ONLINE.accounts = (await api('GET', '/api/admin/users')).users; });
+  SPACE.a_users = () => {
+    if (me().role !== 'admin') return '';
+    if (ONLINE.accounts === null) { loadAccounts(); return head('Comptes') + spinner(); }
+    const rows = ONLINE.accounts.map(u => `<tr>
+      <td><b>${esc(u.name)}</b><div class="small muted">${esc(u.email)}</div></td>
+      <td>${esc(roleLabel(u.role))}</td>
+      <td>${statusPill(u.status)}</td>
+      <td><div class="row" style="gap:6px;flex-wrap:wrap">${u.role === 'admin' || u.id === me().id ? '<span class="small muted">—</span>' : `<select data-chg="olUserRole" data-id="${esc(u.id)}" style="width:auto">${ROLE_OPTS.map(([k, v]) => opt(k, v, u.role)).join('')}</select>${u.status === 'suspendu' ? `<button class="btn btn-g btn-s" data-act="olUserStatus" data-id="${esc(u.id)}" data-status="actif">Réactiver</button>` : `<button class="btn btn-g btn-s" data-act="olUserStatus" data-id="${esc(u.id)}" data-status="suspendu">Suspendre</button>`}${u.status === 'invite' ? `<button class="btn btn-g btn-s" data-act="olUserInvite" data-id="${esc(u.id)}">Renvoyer l'invitation</button>` : ''}`}</div></td></tr>`);
+    return head('Comptes', `${plural(ONLINE.accounts.length, 'compte')} · l'invité choisit son mot de passe via un lien`, `<button class="btn btn-p btn-s" data-act="olUserNew">Créer un compte</button>`)
+      + table(['Personne', 'Rôle', 'Statut', 'Actions'], rows, 'Aucun compte.');
+  };
+  A.olUserNew = () => openModal(`<h2>Créer un compte</h2><p class="small muted">La personne recevra un lien pour choisir son mot de passe (par e-mail si la messagerie est configurée, sinon copiez le lien affiché ensuite).</p>
+    <form class="stack" data-form="olUserCreate">
+      ${field('Nom', '<input name="name" required maxlength="80" autocomplete="off">')}
+      ${field('E-mail', '<input name="email" type="email" required autocomplete="off">')}
+      ${field('Rôle', `<select name="role">${ROLE_OPTS.map(([k, v]) => opt(k, v, 'owner')).join('')}</select>`)}
+      ${field('Présentation (facultatif, utile pour une agence)', '<textarea name="description" rows="2" maxlength="400"></textarea>')}
+      <div class="row" style="gap:10px"><button class="btn btn-p" type="submit">Créer et générer le lien</button><button type="button" class="btn btn-g" data-act="closeModal">Annuler</button></div>
+    </form>`);
+  function inviteModal(j) {
+    openModal(`<h2>Compte créé</h2><p class="small muted">${j.emailed ? 'Un e-mail d\'invitation a été envoyé à ' + esc(j.user.email) + '. ' : 'La messagerie n\'est pas configurée : '}transmettez ce lien à la personne (valable plusieurs jours) :</p>
+      ${field('Lien d\'invitation', `<div class="row" style="gap:6px"><input readonly value="${esc(j.inviteUrl)}" class="grow" style="flex:1">${copyBtn(j.inviteUrl, 'Copier')}</div>`)}
+      <div class="row"><button class="btn btn-p btn-s" data-act="closeModal">Terminé</button></div>`);
+  }
+  F.olUserCreate = async data => { try { const j = await api('POST', '/api/admin/users', { name: data.name, email: data.email, role: data.role, description: data.description }); ONLINE.accounts = null; inviteModal(j); render(); } catch (e) { toast(e.message, true); } };
+  A.olUserStatus = async d => { try { await api('POST', `/api/admin/users/${encodeURIComponent(d.id)}/status`, { status: d.status }); ONLINE.accounts = null; toast(d.status === 'suspendu' ? 'Compte suspendu.' : 'Compte réactivé.'); render(); } catch (e) { toast(e.message, true); } };
+  A.olUserInvite = async d => { try { const j = await api('POST', `/api/admin/users/${encodeURIComponent(d.id)}/invite`, {}); inviteModal(j); } catch (e) { toast(e.message, true); } };
+  C.olUserRole = async el => { try { await api('POST', `/api/admin/users/${encodeURIComponent(el.dataset.id)}/role`, { role: el.value }); ONLINE.accounts = null; toast('Rôle mis à jour.'); render(); } catch (e) { toast(e.message, true); } };
+
   /* ---------- Page « Mon espace » sans compte : invitation à se connecter ---------- */
   const _spaceOnline = VIEWS.space;
   VIEWS.space = p => me() ? _spaceOnline(p) : `<div class="gutter"><div class="wrap" style="padding-block:48px;max-width:560px"><div class="panel stack"><h2>Connexion requise</h2><p class="muted">Connectez-vous pour retrouver vos réservations, votre carte de membre et vos codes d'accès.</p><div class="row"><button class="btn btn-p" data-act="login">Se connecter</button><button class="btn btn-g" data-act="login" data-tab="register">Créer un compte</button></div></div></div></div>`;
 
   // Les écrans de l'espace client relisent toujours le serveur quand on y entre (statut de paiement, accès, annulation)
   const _goOnline = go;
-  go = function (name, p = {}) { if (name === 'space') { if (p.tab === 'c_booking' && p.id) delete ONLINE.booking[p.id]; if (p.tab === 'c_bookings' || p.tab === 'c_stay') ONLINE.bookings = null; if (p.tab === 'o_biens' || p.tab === 't_biens') ONLINE.biens = null; if (p.tab === 'g_acts' || p.tab === 't_acts') ONLINE.acts = null; } return _goOnline(name, p); };
+  go = function (name, p = {}) { if (name === 'space') { if (p.tab === 'c_booking' && p.id) delete ONLINE.booking[p.id]; if (p.tab === 'c_bookings' || p.tab === 'c_stay') ONLINE.bookings = null; if (p.tab === 'o_biens' || p.tab === 't_biens') ONLINE.biens = null; if (p.tab === 'g_acts' || p.tab === 't_acts') ONLINE.acts = null; if (p.tab === 'a_users') ONLINE.accounts = null; } return _goOnline(name, p); };
 
   /* ---------- Session au chargement ---------- */
   /* Au chargement : vérifier que l'API répond (sinon le site reste consultable et oriente vers le contact), puis lire la session. */

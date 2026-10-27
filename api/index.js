@@ -14,6 +14,7 @@ const db = require('./lib/db');
 const sec = require('./lib/security');
 const cat = require('./lib/catalog');
 const cadmin = require('./lib/catalog_admin');
+const uadmin = require('./lib/users_admin');
 const mail = require('./lib/mail');
 const H = require('./lib/http');
 const PSPS = { stripe: require('./psp/stripe'), cmi: require('./psp/cmi'), simulate: require('./psp/simulate') };
@@ -37,7 +38,7 @@ async function createSession(res, req, user) {
 }
 async function currentSession(req) {
   const tok = H.cookies(req)[SESSION_COOKIE]; if (!tok) return null;
-  const s = await db.one('SELECT s.id AS session_id, s.csrf, s.expires_at, s.last_seen, u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = $1 AND s.expires_at > now() AND u.deleted_at IS NULL', [sec.sha256(tok)]);
+  const s = await db.one("SELECT s.id AS session_id, s.csrf, s.expires_at, s.last_seen, u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = $1 AND s.expires_at > now() AND u.deleted_at IS NULL AND u.status <> 'suspendu'", [sec.sha256(tok)]);
   if (!s) return null;
   if (Date.now() - new Date(s.last_seen).getTime() > 5 * 60000) db.query('UPDATE sessions SET last_seen = now(), expires_at = now() + make_interval(hours => $2) WHERE id = $1', [s.session_id, sessionTtlH(s.role)]).catch(() => {});
   return s;
@@ -161,6 +162,7 @@ R.add('POST', '/api/auth/login', async ctx => {
   const u = await db.one('SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL', [email]);
   const ok = u ? sec.verifyPassword(b.password, u.pass_hash) : (sec.verifyPassword('x', 'scrypt$32768$8$1$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='), false); // temps constant
   if (!ok) { audit(null, 'login.fail', '', ctx.ip); throw new H.HttpError(401, 'E-mail ou mot de passe incorrect.'); }
+  if (u.status === 'suspendu') { audit(u.id, 'login.suspended', '', ctx.ip); throw new H.HttpError(403, 'Ce compte est suspendu. Contactez l\'administrateur.'); }
   const csrf = await createSession(ctx.res, ctx.req, u); audit(u.id, 'login', '', ctx.ip);
   return { user: publicUser(u), csrf };
 });
@@ -178,7 +180,8 @@ R.add('POST', '/api/auth/reset', async ctx => {
   const pp = sec.passwordProblem(b.password); if (pp) throw new H.HttpError(400, pp);
   const r = await db.one('SELECT * FROM password_resets WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()', [sec.sha256(str(b.token, 100))]);
   if (!r) throw new H.HttpError(400, 'Lien invalide ou expiré.');
-  await db.tx(async t => { await t.query('UPDATE password_resets SET used_at = now() WHERE token_hash = $1', [r.token_hash]); await t.query('UPDATE users SET pass_hash = $2, updated_at = now() WHERE id = $1', [r.user_id, sec.hashPassword(b.password)]); await t.query('DELETE FROM sessions WHERE user_id = $1', [r.user_id]); });
+  // Choisir son mot de passe active un compte invité et lève l'obligation de changement initial.
+  await db.tx(async t => { await t.query('UPDATE password_resets SET used_at = now() WHERE token_hash = $1', [r.token_hash]); await t.query("UPDATE users SET pass_hash = $2, must_change_password = false, status = CASE WHEN status = 'invite' THEN 'actif' ELSE status END, updated_at = now() WHERE id = $1", [r.user_id, sec.hashPassword(b.password)]); await t.query('DELETE FROM sessions WHERE user_id = $1', [r.user_id]); });
   audit(r.user_id, 'password.reset', '', ctx.ip); return { ok: true };
 });
 R.add('POST', '/api/auth/password', async ctx => {
@@ -295,6 +298,23 @@ R.add('POST', '/api/admin/catalog/listings/:id/publish', async ctx => { const u 
 R.add('GET', '/api/admin/catalog/activities', async ctx => { requireUser(ctx); return { activities: await ca(() => cadmin.listActivities(ctx.session)) }; });
 R.add('POST', '/api/admin/catalog/activities', async ctx => { const u = requireCsrf(ctx); const body = await H.readJson(ctx.req); const a = await ca(() => cadmin.saveActivity(u, body)); audit(u.id, 'activity.save', a.id, ctx.ip); return { activity: a }; });
 R.add('POST', '/api/admin/catalog/activities/:id/publish', async ctx => { const u = requireCsrf(ctx); const b = await H.readJson(ctx.req); const a = await ca(() => cadmin.publishActivity(u, str(ctx.params.id, 40), !!b.publish)); audit(u.id, b.publish ? 'activity.publish' : 'activity.unpublish', a.id, ctx.ip); return { activity: a }; });
+
+/* ---------- Administration des comptes (admin uniquement) : créer/inviter propriétaires, collaborateurs, agences ---------- */
+// Construit le lien d'invitation et envoie l'e-mail si la messagerie est configurée ; renvoie toujours le lien à l'admin.
+async function inviteResult(ctx, out, kind) {
+  const link = `${siteUrl(ctx.req)}/#reinitialiser~${out.token}`;
+  let emailed = false;
+  try {
+    const r = await mail.send({ to: out.user.email, subject: `${cat.siteName()} · votre accès`, text: `Bonjour ${out.user.name},\n\nUn accès ${cat.siteName()} a été créé pour vous (${ROLE_LABEL[out.user.role] || out.user.role}). Choisissez votre mot de passe (lien valable ${uadmin.INVITE_DAYS} jours) :\n${link}\n\nÀ bientôt,\n${cat.siteName()}` });
+    emailed = !!(r && r.sent);
+  } catch (e) { /* messagerie non configurée : l'admin transmet le lien manuellement */ }
+  return { user: out.user, inviteUrl: link, emailed };
+}
+R.add('GET', '/api/admin/users', async ctx => { requireUser(ctx, 'admin'); return { users: await ca(() => uadmin.listUsers(ctx.session)) }; });
+R.add('POST', '/api/admin/users', async ctx => { const a = requireCsrf(ctx); if (a.role !== 'admin') throw new H.HttpError(403, 'Accès refusé.'); const body = await H.readJson(ctx.req); const out = await ca(() => uadmin.createUser(a, body)); audit(a.id, 'user.create', out.user.id, ctx.ip); return inviteResult(ctx, out); });
+R.add('POST', '/api/admin/users/:id/invite', async ctx => { const a = requireCsrf(ctx); if (a.role !== 'admin') throw new H.HttpError(403, 'Accès refusé.'); const out = await ca(() => uadmin.reinvite(a, str(ctx.params.id, 40))); audit(a.id, 'user.reinvite', out.user.id, ctx.ip); return inviteResult(ctx, out); });
+R.add('POST', '/api/admin/users/:id/status', async ctx => { const a = requireCsrf(ctx); if (a.role !== 'admin') throw new H.HttpError(403, 'Accès refusé.'); const b = await H.readJson(ctx.req); const u = await ca(() => uadmin.setStatus(a, str(ctx.params.id, 40), str(b.status, 20))); audit(a.id, 'user.status', ctx.params.id + ':' + u.status, ctx.ip); return { user: u }; });
+R.add('POST', '/api/admin/users/:id/role', async ctx => { const a = requireCsrf(ctx); if (a.role !== 'admin') throw new H.HttpError(403, 'Accès refusé.'); const b = await H.readJson(ctx.req); const u = await ca(() => uadmin.setRole(a, str(ctx.params.id, 40), str(b.role, 20))); audit(a.id, 'user.role', ctx.params.id + ':' + u.role, ctx.ip); return { user: u }; });
 
 R.add('GET', '/api/admin/settings/mail', async ctx => { requireUser(ctx, 'admin'); return { mail: mail.publicView(await mail.config()) }; });
 R.add('PUT', '/api/admin/settings/mail', async ctx => {
