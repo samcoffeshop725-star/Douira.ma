@@ -22,7 +22,7 @@ window.DOUIRA_CONFIG = {
 
   siteName: 'Douira',
   siteUrl: 'https://douira-tsof.onrender.com',            // après l'achat du domaine, ex. 'https://www.votre-domaine.ma'
-  whatsapp: '',           // À COMPLÉTER : numéro qui reçoit les demandes, ex. '+212 6 12 34 56 78'
+  whatsapp: '+212 600 000 000',   // À COMPLÉTER : remplacez par votre VRAI numéro WhatsApp (celui-ci est un exemple)
   // E-mail de l'administrateur : reçoit les demandes envoyées par e-mail et
   // s'affiche sur le site comme adresse de contact.
   email: 'douira.services@gmail.com',

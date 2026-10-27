@@ -980,6 +980,7 @@ header.top.lang-hide .lang-btn{display:none}
 .actv-media .actv-ph{position:absolute;inset:0;background:linear-gradient(135deg,var(--surface-2),var(--line))}
 .actv-media .act-pct{position:absolute;top:14px;left:14px;font-size:.9rem;padding:5px 12px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
 @media(min-width:800px){.actv-media{position:sticky;top:90px}}
+.contact-actions{display:flex;flex-wrap:wrap;gap:8px}
 /* =====================================================================
    Thème « Douira 2026 » : organisation et composants inspirés des applications
    de lifestyle (Privilee) : fond blanc, typographie géométrique légère, boutons
@@ -4038,6 +4039,16 @@ function rail(inner) {
   return `<div class="rail-wrap"><button type="button" class="rail-a prev" data-act="railNav" data-dir="-1" aria-label="Précédent">${CHEV_L}</button><div class="lrail">${inner}</div><button type="button" class="rail-a next" data-act="railNav" data-dir="1" aria-label="Suivant">${CHEV_R}</button></div>`;
 }
 A.railNav = (d, el) => { const w = el.parentElement.querySelector('.lrail'); if (w) w.scrollBy({ left: Number(d.dir) * Math.max(240, w.clientWidth * 0.8), behavior: 'smooth' }); };
+// Boutons de contact : message interne (page Contact), WhatsApp et appel téléphonique.
+function contactActions(phone, subject) {
+  const digits = (phone || '').replace(/\D/g, '');
+  const txt = encodeURIComponent((subject ? subject + ' — ' : '') + 'bonjour, je vous contacte depuis ' + (S.settings.siteName || 'Douira') + '.');
+  return `<div class="contact-actions">
+    <button type="button" class="btn btn-p btn-s" data-act="go" data-to="contact" data-subject="${esc(subject || '')}">Envoyer un message</button>
+    ${digits ? `<a class="btn btn-g btn-s" href="https://wa.me/${digits}?text=${txt}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+    ${phone ? `<a class="btn btn-g btn-s" href="tel:${esc((phone || '').replace(/\s/g, ''))}">Appeler</a>` : ''}
+  </div>`;
+}
 function dockForm(p = {}, cls = 'dock') {
   const cities = [...new Set(publicListings().map(l => l.city))].sort();
   return `<form data-form="search" class="${cls === 'dock' ? '' : 'wrap'}">${p.cat ? `<input type="hidden" name="cat" value="${esc(p.cat)}">` : ''}
@@ -4840,7 +4851,7 @@ function vitrineState() {
     const villa = /villa/i.test(b.type || '');
     const disc = b.remise && Number(b.remise.pourcentage) > 0 ? { pct: Number(b.remise.pourcentage), label: b.remise.libelle || '', labelEn: b.remise.libelleEn || '', from: b.remise.du || '', to: b.remise.au || '' } : null;
     return {
-      id: 'b' + (b.id || i + 1), categoryId: villa ? 'cat_villas' : 'cat_apartments', ownerId: '', status: 'published', managementMode: b.modeGestion === 'autonome' ? 'autonome' : 'delegue',
+      id: 'b' + (b.id || i + 1), categoryId: villa ? 'cat_villas' : 'cat_apartments', ownerId: '', status: 'published', managementMode: b.modeGestion === 'autonome' ? 'autonome' : 'delegue', contactPhone: b.telephone || '',
       title: b.titre || 'Logement', titleEn: b.titreEn || '', city: b.ville || city, area: b.quartier || '', art: i,
       prices: { nuit: Number(b.prixNuit || 0) }, capacity: Number(b.voyageurs || 2),
       attrs: { bedrooms: Number(b.chambres || 0), bathrooms: Number(b.sallesDeBain || 0), surface: Number(b.surface || 0) || undefined },
@@ -4857,7 +4868,7 @@ function vitrineState() {
     geo: a.position && a.position.lat ? { lat: Number(a.position.lat), lng: Number(a.position.lng) } : null,
     price: (a.prix === 0 || a.prix) ? Number(a.prix) : undefined, note: a.note || '',
     pct: Math.max(0, Math.min(90, Math.round(Number(a.reduction || 0)))) || undefined, parcours: a.parcours || '', status: 'published',
-    photo: typeof a.photo === 'string' ? a.photo : '', agence: a.agence || '', agenceDesc: a.agenceDesc || ''
+    photo: typeof a.photo === 'string' ? a.photo : '', agence: a.agence || '', agenceDesc: a.agenceDesc || '', contactPhone: a.telephone || ''
   })).filter(a => a.geo);
   S.users = []; S.bookings = []; S.emails = []; S.tickets = []; S.requests = []; S.audit = []; S.reviews = []; S.favLists = []; S.cleaners = [];
   S.extras = (Array.isArray(c.vehicules) ? c.vehicules : []).map((x, i) => ({ id: 'v' + (i + 1), type: /moto|scooter/i.test(x.type || '') ? 'moto' : 'voiture', name: x.nom || 'Véhicule', specs: x.description || '', specsEn: x.descriptionEn || '', pricePerDay: Number(x.prixJour || 0), deposit: Number(x.caution || 0), active: true, blocks: [], photoUrl: x.photo || '' })).filter(x => x.pricePerDay > 0);
@@ -6341,6 +6352,8 @@ VIEWS.activity = p => {
   const a = typeof activity === 'function' ? activity(p.id) : null;
   if (!a || a.status === 'draft') return `<div class="gutter"><div class="wrap" style="padding-block:40px"><div class="empty">Cette activité n'est pas disponible.</div></div></div>`;
   const ag = actAgency(a), u = me();
+  const agUser = a.agenceId ? user(a.agenceId) : null;
+  const aPhone = (agUser ? agUser.phone : '') || a.contactPhone || (S.settings.whatsapp || '');
   return `<div class="gutter"><div class="wrap stack-l" style="padding-block:14px 44px">
     <nav class="crumbs small" aria-label="Fil d'Ariane"><button data-act="back">← Retour</button></nav>
     <div class="actv">
@@ -6351,7 +6364,7 @@ VIEWS.activity = p => {
         ${a.note ? `<p class="lead">${esc(a.note)}</p>` : ''}
         ${a.price ? `<p><b class="num" style="font-size:1.2rem">${mad(a.price)}</b> <span class="muted">par personne (indicatif)</span>${a.pct ? ` · <b style="color:var(--accent)">−${a.pct} % membres</b>` : ''}</p>` : a.pct ? `<p><b style="color:var(--accent);font-size:1.1rem">−${a.pct} % membres</b></p>` : ''}
         ${a.parcours ? `<div class="panel stack-s"><h3>Votre parcours</h3><p>${esc(a.parcours)}</p></div>` : ''}
-        ${ag.name ? `<div class="panel stack-s"><h3>Proposé par ${esc(ag.name)}</h3>${ag.desc ? `<p class="small muted">${esc(ag.desc)}</p>` : ''}</div>` : ''}
+        ${ag.name ? `<div class="panel stack-s"><h3>Proposé par ${esc(ag.name)}</h3>${ag.desc ? `<p class="small muted">${esc(ag.desc)}</p>` : ''}<p class="small muted" style="margin:0">Une question ? Contactez l'agence directement.</p>${contactActions(aPhone, 'Activité : ' + a.name)}</div>` : ''}
         ${a.pct ? `<div class="note info"><b>Votre réduction de −${a.pct} %.</b> Présentez votre carte de membre Douira à l'agence sur place : elle scanne votre QR (ou cherche votre nom) pour activer votre promotion.${u && u.role === 'client' ? '' : ' Créez un compte pour obtenir votre carte de membre.'}</div>` : ''}
         <div class="row">${a.geo ? `<a class="btn btn-g" href="https://www.google.com/maps/search/?api=1&query=${a.geo.lat}%2C${a.geo.lng}" target="_blank" rel="noopener">Voir sur la carte</a>` : ''}</div>
       </div>
@@ -6363,6 +6376,8 @@ VIEWS.listing = p => {
   const l = listing(p.id);
   if (!listingViewAllowed(l)) return `<div class="gutter"><div class="wrap" style="padding-block:40px"><div class="empty">Cette annonce n'est pas disponible.</div></div></div>`;
   const tpl = tplOf(l), a = l.attrs || {}, cat = category(l.categoryId), owner = user(l.ownerId) || {};
+  const ownerContact = isAutonome(l) && owner && owner.id;
+  const contactPhone = (ownerContact ? owner.phone : '') || l.contactPhone || (S.settings.whatsapp || '');
   const preview = !(l.status === 'published' && cat.active);
   const start = p.start || isoD(addDays(today(), 14)), end = p.end || isoD(addDays(today(), 17));
   const hr = ownerRating(l.ownerId);
@@ -6404,6 +6419,11 @@ VIEWS.listing = p => {
         <button class="btn btn-p" data-act="book" data-id="${l.id}" ${preview ? 'disabled' : ''}>${IS_VITRINE && !IS_ONLINE ? 'Demander une réservation' : 'Réserver'}</button>
         <p class="small muted">${IS_VITRINE && !IS_ONLINE ? "Gratuit et sans engagement. Notre équipe vous confirme la disponibilité et les modalités de paiement." : "Aucun montant n'est débité à cette étape. Le paiement se fait ensuite sur la page sécurisée du prestataire de paiement."}</p>
         ${typeof svcNote === 'function' ? svcNote() : ''}
+        <div class="stack-s" style="border-top:1px solid var(--line);padding-top:12px">
+          <b class="small">${ownerContact ? 'Contacter le propriétaire' : 'Contacter l\'équipe ' + esc(S.settings.siteName)}</b>
+          <p class="small muted" style="margin:0">Une question sur ce logement ? Écrivez-nous${contactPhone ? ', par WhatsApp ou par téléphone' : ''}.</p>
+          ${contactActions(contactPhone, 'Renseignement : ' + l.title)}
+        </div>
       </aside>
     </div>
     ${similar.length ? `<section class="stack" style="padding-top:20px"><h2>Vous aimerez aussi</h2>${rail(similar.map(lcard).join(''))}</section>` : ''}
