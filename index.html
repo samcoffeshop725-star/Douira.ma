@@ -1789,6 +1789,18 @@ function activitiesSection(l) {
     <div class="actcats">${cats.map(c => `<span class="pill">${esc(ACT_CATEGORIES[c] || c)}</span>`).join(' ')}</div>
     <ul class="actlist">${near.slice(0, 10).map(item).join('')}</ul>`;
 }
+// Carte verticale d'une activité (grille : catégories, résultats de recherche).
+function activityCard(a) {
+  const ag = actAgency(a);
+  return `<article class="actcard" data-act="go" data-to="activity" data-id="${a.id}" role="link" tabindex="0">
+    <div class="actcard-ph">${a.photo ? `<img src="${esc(a.photo)}" alt="" loading="lazy">` : '<div class="actcard-noph"></div>'}${pctBadge(a.pct)}</div>
+    <div class="actcard-b">
+      <span class="pill">${esc(ACT_CATEGORIES[a.cat] || a.cat)}</span>
+      <b>${esc(a.name)}</b>
+      ${a.note ? `<span class="small muted">${esc(a.note)}</span>` : ''}
+      ${ag.name ? `<span class="small muted">${esc(ag.name)}</span>` : ''}
+    </div></article>`;
+}
 const booking = id => S.bookings.find(b => b.id === id);
 const ticket = id => S.tickets.find(t => t.id === id);
 const category = id => S.categories.find(c => c.id === id);
@@ -4266,6 +4278,7 @@ VIEWS.search = p => {
           <div class="row"><button class="cat-chip" data-act="searchPromo" aria-pressed="${p.promo === '1'}">Offres en cours</button><button class="cat-chip" data-act="searchDiamond" aria-pressed="${p.diamond === '1'}"><span class="row" style="gap:6px;display:inline-flex">${DIAMOND_SVG.replace('<svg ', '<svg style="width:16px;height:16px;color:var(--diamond)" ')}Diamond</span></button>
           <label class="row small" for="sort">Trier <select id="sort" style="width:auto" data-chg="sort">${opt('reco', 'Recommandés', sort)}${opt('rating', 'Mieux notés', sort)}${opt('price', 'Prix croissant', sort)}${opt('price_desc', 'Prix décroissant', sort)}</select></label></div></div>
         ${note}${list.length ? `<div class="lgrid">${list.map(lcard).join('')}</div>` : `<div class="empty stack-s" style="align-items:center"><p>Aucun logement ne correspond à ces critères.</p><div class="row" style="justify-content:center"><button class="btn btn-g btn-s" data-act="go" data-to="search">Effacer les filtres</button>${p.q && typeof assistAvailable === 'function' && assistAvailable() ? `<button class="btn btn-g btn-s" data-act="botAsk" data-q="${esc(p.q)}">Demander à l'assistant</button>` : ''}</div></div>`}
+        ${p.q && typeof searchActivities === 'function' ? (() => { const acts = searchActivities(p.q); return acts.length ? `<section class="stack-s" style="margin-top:30px"><h2 style="font-size:1.25rem">Activités pour « ${esc(p.q)} »</h2><div class="lgrid">${acts.map(activityCard).join('')}</div></section>` : ''; })() : ''}
       </div>
       <div class="smap"><div class="mapwrap">${mapBox(list)}<div class="mapbar"><span class="mapnote">Positions approximatives : l'adresse exacte est envoyée après le paiement</span>${p.city ? `<button class="btn btn-g btn-s" data-act="searchCity" data-city="">Tout le Maroc</button>` : ''}</div></div></div>
     </div>
@@ -7313,6 +7326,16 @@ function searchListings(q, base) {
     return { l, hit, score };
   }).filter(x => x.hit >= need).sort((a, b) => b.score - a.score || recoScore(b.l) - recoScore(a.l)).map(x => x.l);
 }
+// Activités correspondant à une recherche (nom, catégorie, agence, note, parcours)
+function searchActivities(q) {
+  const toks = qTokens(q); if (!toks.length) return [];
+  return (S.activities || []).filter(a => a.status !== 'draft' && a.geo).map(a => {
+    const ag = actAgency(a);
+    const hay = qNorm([a.name, ACT_CATEGORIES[a.cat] || a.cat, a.note || '', a.parcours || '', ag.name || ''].join(' '));
+    const hit = toks.filter(t => hay.includes(t)).length;
+    return { a, hit };
+  }).filter(x => x.hit > 0).sort((a, b) => b.hit - a.hit).map(x => x.a);
+}
 // Questions fréquentes les plus proches d'une demande (score = mots en commun)
 function faqMatches(q, list) {
   const toks = qTokens(q); if (!toks.length) return [];
@@ -7366,14 +7389,16 @@ function qsSuggest(q) {
   const ls = searchListings(s).slice(0, 5), toks = qTokens(s), n = qNorm(s);
   const areas = [...new Set(publicListings().map(l => l.area))].filter(a => qNorm(a).includes(n) || toks.some(t => t.length > 2 && qNorm(a).includes(t))).slice(0, 3);
   const pks = packMatches(s).slice(0, 2), faqs = faqMatches(s).slice(0, 2), pages = QS_PAGES().filter(p => toks.some(t => t.length > 2 && (p.k.includes(t) || qNorm(p.t).includes(t)))).slice(0, 2);
+  const acts = (typeof searchActivities === 'function' ? searchActivities(s) : []).slice(0, 3);
   let i = 0; const opt = (attrs, inner) => `<button type="button" class="qs-opt" role="option" id="qs-o${i++}" ${attrs}>${inner}</button>`;
   let h = '';
   if (ls.length) h += `<div class="qs-g">Logements</div>` + ls.map(l => opt(`data-act="go" data-to="listing" data-id="${l.id}"`, `<img src="${lphoto(l, 0)}" alt=""><span><b>${esc(l.title)}</b><span class="small muted">${esc(l.area)}, ${esc(l.city)} · ${priceHtml(l)} / ${UNIT_LABEL[tplOf(l).units[0]]}</span></span>`)).join('');
   if (pks.length) h += `<div class="qs-g">Packs complets</div>` + pks.map(p => { const l = listing(p.listingId); return opt(`data-act="go" data-to="pack" data-id="${p.id}"`, `<img src="${lphoto(l, 0)}" alt=""><span><b>${esc(pkLabel(p))}</b><span class="small muted">${esc(l.area)}, ${esc(l.city)} · ${esc(ltitle(l))}</span></span>`); }).join('');
+  if (acts.length) h += `<div class="qs-g">Activités</div>` + acts.map(a => opt(`data-act="go" data-to="activity" data-id="${a.id}"`, `${a.photo ? `<img src="${esc(a.photo)}" alt="">` : IC.pin}<span><b>${esc(a.name)}</b><span class="small muted">${esc(ACT_CATEGORIES[a.cat] || a.cat)}${a.pct ? ' · −' + a.pct + ' %' : ''}</span></span>`)).join('');
   if (areas.length) h += `<div class="qs-g">Quartiers</div>` + areas.map(a => opt(`data-act="go" data-to="search" data-area="${esc(a)}"`, `${IC.pin}<span><b>${esc(a)}</b><span class="small muted">${plural(publicListings().filter(l => l.area === a).length, 'logement')}</span></span>`)).join('');
   if (faqs.length) h += `<div class="qs-g">Questions fréquentes</div>` + faqs.map(f => opt(`data-act="botAsk" data-q="${esc(f.q)}"`, `${IC.chat}<span>${esc(f.q)}</span>`)).join('');
   if (pages.length) h += `<div class="qs-g">Pages</div>` + pages.map(p => opt(p.a, `${IC.list}<span>${esc(p.t)}</span>`)).join('');
-  if (!ls.length && !areas.length) h += `<p class="qs-none small muted">Aucun logement ne correspond à « ${esc(s)} ».</p>`;
+  if (!ls.length && !areas.length && !acts.length) h += `<p class="qs-none small muted">Aucun résultat pour « ${esc(s)} ».</p>`;
   h += opt(`data-act="qsAll"`, `${QS_ICON}<span>Voir tous les résultats pour « ${esc(s)} »</span>`);
   if (typeof assistAvailable === 'function' && assistAvailable()) h += opt(`data-act="botAsk" data-q="${esc(s)}"`, `${IC.chat}<span>Demander à l'assistant : « ${esc(s)} »</span>`);
   pop.innerHTML = h; pop.hidden = false; inp.setAttribute('aria-expanded', 'true'); inp.removeAttribute('aria-activedescendant');
