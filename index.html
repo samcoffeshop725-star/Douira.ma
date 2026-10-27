@@ -1134,14 +1134,31 @@ body.home-top.has-demobar header.top.scrolled{top:0}
 .sec-title{text-align:center;font-weight:300;font-size:clamp(1.9rem,3.4vw,2.7rem)}
 
 /* Cartes photo */
-.lwrap{border:1px solid var(--line);border-radius:18px;box-shadow:none}
-.lwrap:hover,.lwrap.on{box-shadow:var(--shadow);border-color:var(--line)}
-.lcard .ph{aspect-ratio:16/11}
+.lwrap{border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:none;transition:transform .28s cubic-bezier(.2,.7,.2,1),box-shadow .28s,border-color .28s}
+.lwrap:hover,.lwrap.on{box-shadow:0 18px 40px -18px rgba(0,0,0,.4);border-color:transparent;transform:translateY(-6px)}
+.lcard{gap:0}
+/* Carte portrait : la photo prend la moitié haute de la carte */
+.lcard .ph{aspect-ratio:4/5;border-radius:0}
+.pk-wrap .lcard .ph{aspect-ratio:4/5}
+/* Carrousel de photos : défilement horizontal avec accroche (swipe), flèches au survol, points */
+.pcar{position:absolute;inset:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.pcar::-webkit-scrollbar{display:none}
+.pcar img{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:center;transition:none}
+.lcard:hover .pcar img,.lcard:hover .ph img{transform:none}
+.pcar-a{position:absolute;top:calc(50% - 16px);width:32px;height:32px;border-radius:50%;border:0;background:rgba(255,255,255,.94);color:#2B1E1C;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .2s,transform .2s;box-shadow:0 2px 10px rgba(0,0,0,.25);z-index:3}
+.pcar-a svg{width:15px;height:15px}
+.pcar-a.prev{left:10px}.pcar-a.next{right:10px}
+.pcar-a:active{transform:scale(.9)}
+.lwrap:hover .pcar-a{opacity:1}
+.pcar-dots{position:absolute;left:0;right:0;bottom:12px;display:flex;gap:5px;justify-content:center;z-index:3;pointer-events:none}
+.pcar-dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.55);box-shadow:0 1px 2px rgba(0,0,0,.3);transition:all .2s}
+.pcar-dots i.on{background:#fff;transform:scale(1.25)}
+.lbody{width:100%;text-align:left;background:none;border:0;cursor:pointer;color:inherit;font:inherit}
 .lbody h3{font-weight:500;font-size:1.05rem}
-.price-chip{background:var(--chip);color:var(--chip-ink);border-radius:999px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.price-chip{background:var(--chip);color:var(--chip-ink);border-radius:999px;box-shadow:0 2px 10px rgba(0,0,0,.18);z-index:2}
 .lfoot{border-top:0;padding-top:4px}
 .specs{font-size:.86rem}
-.pk-wrap .lcard .ph{aspect-ratio:16/11}
+@media(hover:none){.pcar-a{display:none}}
 .svcard{border-radius:18px}
 .svm{border-radius:16px}
 
@@ -1221,7 +1238,7 @@ footer.foot .social span{width:34px;height:34px;border-radius:50%;border:1px sol
 .lstate.full i{background:var(--bad)}
 
 /* Fiche d'un logement : photo en en-tête et panneau */
-.vhead{position:relative;border-radius:22px;overflow:hidden;background:var(--surface-2);aspect-ratio:21/9;min-height:260px}
+.vhead{position:relative;border-radius:22px;overflow:hidden;background:var(--surface-2);aspect-ratio:16/10;min-height:340px}
 .vhead .mosaic-wrap{position:absolute;inset:0}
 .vhead .mosaic{border-radius:0;aspect-ratio:auto;height:100%;max-width:none}
 .vhead .mosaic img{cursor:pointer}
@@ -1572,7 +1589,7 @@ const PERMS = [
   { k: 'settings.manage', label: 'Paramètres, thème et apparence', locked: true },
   { k: 'audit.view', label: "Journal d'audit", locked: true }
 ];
-const ROLE_LABEL = { admin: 'Administrateur', collaborator: 'Collaborateur', owner: 'Propriétaire', client: 'Client' };
+const ROLE_LABEL = { admin: 'Administrateur', collaborator: 'Collaborateur', owner: 'Propriétaire', agency: 'Agence', client: 'Client' };
 
 /* ---------- Illustrations des annonces (générées, aucune image externe) ---------- */
 const PALS = [
@@ -3871,14 +3888,35 @@ function specsHtml(l, size) {
   }
   return `<span class="specs${size ? ' ' + size : ''}">${out.join('')}</span>`;
 }
+const CHEV_L = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CHEV_R = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 lcard = function (l) {
   const tpl = tplOf(l), u = tpl.units[0];
-  return `<div class="lwrap" data-lid="${l.id}"><button class="lcard${l.diamond ? ' diamond' : ''}" data-act="go" data-to="listing" data-id="${l.id}">
-    <span class="ph"><img src="${lphoto(l, 0)}" alt="" loading="lazy">${l.diamond ? diamondBadge() + '<span class="motif dia-motif"></span>' : `<span class="badge">${esc(category(l.categoryId).name.replace(/s$/, ''))}</span>`}
-      <span class="price-chip">${priceHtml(l)} / ${UNIT_LABEL[u]}${eurHtml(lPrice(l), 'eur eur-chip')}</span>${discountOf(l) ? discBadge(discountOf(l)) : ''}</span>
-    <span class="lbody"><span class="loc small">${IC.pin}${esc(l.area)}, ${esc(l.city)}</span><h3>${esc(l.title)}</h3>${specsHtml(l)}
-      <span class="lfoot">${l.diamond ? '<b class="dia-text">Sélection Diamond</b>' : ratingLine(l)}</span></span></button>${heartBtn(l)}</div>`;
+  const phs = realPhotos(l); const imgs = phs.length ? phs.map((_, i) => lphoto(l, i)) : [lphoto(l, 0)];
+  const multi = imgs.length > 1;
+  return `<div class="lwrap" data-lid="${l.id}"><div class="lcard${l.diamond ? ' diamond' : ''}">
+    <div class="ph" data-act="go" data-to="listing" data-id="${l.id}">
+      <div class="pcar">${imgs.map(src => `<img src="${esc(src)}" alt="" loading="lazy">`).join('')}</div>
+      ${multi ? `<button type="button" class="pcar-a prev" data-act="carNav" data-dir="-1" tabindex="-1" aria-label="Photo précédente">${CHEV_L}</button><button type="button" class="pcar-a next" data-act="carNav" data-dir="1" tabindex="-1" aria-label="Photo suivante">${CHEV_R}</button><div class="pcar-dots">${imgs.map((_, i) => `<i${i ? '' : ' class="on"'}></i>`).join('')}</div>` : ''}
+      ${l.diamond ? diamondBadge() + '<span class="motif dia-motif"></span>' : `<span class="badge">${esc(category(l.categoryId).name.replace(/s$/, ''))}</span>`}
+      <span class="price-chip">${priceHtml(l)} / ${UNIT_LABEL[u]}${eurHtml(lPrice(l), 'eur eur-chip')}</span>${discountOf(l) ? discBadge(discountOf(l)) : ''}
+    </div>
+    <button class="lbody" type="button" data-act="go" data-to="listing" data-id="${l.id}"><span class="loc small">${IC.pin}${esc(l.area)}, ${esc(l.city)}</span><h3>${esc(l.title)}</h3>${specsHtml(l)}
+      <span class="lfoot">${l.diamond ? '<b class="dia-text">Sélection Diamond</b>' : ratingLine(l)}</span></button></div>${heartBtn(l)}</div>`;
 };
+// Carrousel photo des cartes : flèches + synchronisation des points au défilement (swipe natif sur mobile).
+A.carNav = (d, el) => { const ph = el.closest('.ph'); const car = ph && ph.querySelector('.pcar'); if (!car) return; car.scrollBy({ left: Number(d.dir) * (car.clientWidth || 1), behavior: 'smooth' }); };
+function mountCarousels() {
+  document.querySelectorAll('.pcar:not([data-car-bound])').forEach(car => {
+    car.setAttribute('data-car-bound', '1');
+    const dots = car.parentElement.querySelector('.pcar-dots'); if (!dots) return;
+    car.addEventListener('scroll', () => requestAnimationFrame(() => {
+      const i = Math.round(car.scrollLeft / (car.clientWidth || 1));
+      [...dots.children].forEach((dot, k) => dot.classList.toggle('on', k === i));
+    }), { passive: true });
+  });
+}
+if (typeof render === 'function') { const _renderCar = render; render = function () { _renderCar(); mountCarousels(); }; }
 function dockForm(p = {}, cls = 'dock') {
   const cities = [...new Set(publicListings().map(l => l.city))].sort();
   return `<form data-form="search" class="${cls === 'dock' ? '' : 'wrap'}">${p.cat ? `<input type="hidden" name="cat" value="${esc(p.cat)}">` : ''}
@@ -6173,7 +6211,7 @@ lcard = function (l) {
   const h = _lcardState(l);
   if (R.name !== 'search' || !R.p.start || !R.p.end || diffDays(R.p.start, R.p.end) < 1) return h;
   const free = isAvailable(l.id, R.p.start, R.p.end);
-  return h.replace(/(<span class="ph">)/, `$1<span class="lstate${free ? '' : ' full'}"><i></i>${free ? 'Disponible' : 'Complet'}</span>`);
+  return h.replace(/(<div class="ph"[^>]*>)/, `$1<span class="lstate${free ? '' : ' full'}"><i></i>${free ? 'Disponible' : 'Complet'}</span>`);
 };
 
 /* ---------- Fiche d'un logement ---------- */
