@@ -6321,13 +6321,13 @@ VIEWS.home = () => {
   </div></section>` : `<section class="sec2 gutter"><div class="wrap"><div class="empty stack-s" style="align-items:center"><h2>Nos premiers logements arrivent bientôt</h2><p>Vous êtes propriétaire à ${esc(cityName)} ? Confiez-nous votre bien.</p><div class="row" style="justify-content:center"><button class="btn btn-p" data-act="go" data-to="propose">Proposer mon bien</button><button class="btn btn-g" data-act="go" data-to="contact">Nous contacter</button></div></div></div></section>`}
   <section class="sec2 gutter" style="padding-top:0"><div class="wrap"><div class="sec-head"><div><h2>Explorer par catégorie</h2></div><button class="btn btn-g btn-s" data-act="go" data-to="categories">Toutes les catégories</button></div>
     <div class="types cat-grid">${activeCats().map((ct, i) => { const ls = list.filter(l => l.categoryId === ct.id); const min = ls.length ? Math.min(...ls.map(l => pubPrice(l))) : 0; return `<button class="type cat-tile" data-act="go" data-to="search" data-cat="${ct.id}"><img src="${ls[0] ? lphoto(ls[0], 0) : art(i, 0)}" alt="" loading="lazy"><span class="t"><b>${esc(ct.name)}</b><span class="small">${plural(ls.length, 'logement')}${min ? ` · à partir de ${mad(min)} / ${UNIT_LABEL[TEMPLATES[ct.templateId].units[0]]}` : ''}</span></span></button>`; }).join('')}</div></div></section>
-  ${promos.length ? `<section class="sec2 gutter" style="padding-top:0"><div class="wrap"><div class="sec-head"><div><h2>Offres du moment</h2><p>Remises accordées par les propriétaires, appliquées automatiquement au prix.</p></div><button class="btn btn-g btn-s" data-act="go" data-to="search" data-promo="1">Toutes les offres</button></div>${rail(promos.slice(0, 3).map(lcard).join(''))}</div></section>` : ''}
+  ${promos.length ? `<section class="sec2 gutter" style="padding-top:0"><div class="wrap"><div class="sec-head"><div><h2>Offres du moment</h2><p>Remises accordées par les propriétaires, appliquées automatiquement au prix.</p></div><button class="btn btn-g btn-s" data-act="go" data-to="search" data-promo="1">Toutes les offres</button></div><div class="lgrid">${promos.slice(0, 3).map(lcard).join('')}</div></div></section>` : ''}
   ${typeof packsSection === 'function' ? packsSection() : ''}
   ${typeof servicesSection === 'function' ? servicesSection() : ''}
   ${diamondSection()}
   <section class="sec2 gutter" style="padding-top:8px"><div class="wrap">
     <div class="sec-head"><div><h2>Logements à la une</h2><p>${IS_VITRINE ? 'Notre sélection du moment.' : 'Les mieux notés par nos voyageurs.'}</p></div><button class="btn btn-g btn-s" data-act="go" data-to="search">Voir les ${list.length} logements</button></div>
-    ${rail(list.filter(l => !l.diamond).slice(0, 6).map(lcard).join(''))}
+    <div class="lgrid">${list.filter(l => !l.diamond).slice(0, 6).map(lcard).join('')}</div>
   </div></section>
 
   ${quotes.length ? `<section class="sec2 gutter"><div class="wrap">
@@ -6480,7 +6480,7 @@ VIEWS.listing = p => {
         </div>
       </aside>
     </div>
-    ${similar.length ? `<section class="stack" style="padding-top:20px"><h2>Vous aimerez aussi</h2>${rail(similar.map(lcard).join(''))}</section>` : ''}
+    ${similar.length ? `<section class="stack" style="padding-top:20px"><h2>Vous aimerez aussi</h2><div class="lgrid">${similar.map(lcard).join('')}</div></section>` : ''}
   </div></div>
   ${preview ? '' : `<div class="mbook" role="region" aria-label="Réserver ce logement"><div class="stack-s" style="gap:0"><span>${priceHtml(l)} <span class="muted small">/ ${UNIT_LABEL[tpl.units[0]]}</span> ${eurHtml(lPrice(l), 'eur')}</span><span class="small">${l.diamond ? '<b class="dia-text">Sélection Diamond</b>' : ratingLine(l)}</span></div><button class="btn btn-p" data-act="scrollBook">${IS_VITRINE && !IS_ONLINE ? 'Demander' : 'Réserver'}</button></div><div class="mbook-space"></div>`}`;
 };
