@@ -1008,18 +1008,18 @@ header.top.lang-hide .lang-btn{display:none}
    garde cette charte.
    ===================================================================== */
 :root, :root[data-brand="desert"], :root[data-brand="zellige"], :root[data-brand="majorelle"]{
-  /* Charte « Zellige jewel » : mosaïque marocaine — vert émeraude (principal), bleu zellige, terracotta, safran, fond crème */
-  --bg:#FBF7EF; --surface:#FFFFFF; --surface-2:#F4EDDF; --line:#E7DBC6; --ink:#241C22; --muted:#6E6153;
-  --accent:#1F6B52; --accent-ink:#FFFFFF; --accent-soft:#D7E9E0;           /* vert émeraude (zellige) */
-  --terra:#B0472C; --terra-soft:#F6DED3;                                    /* terracotta */
-  --majorelle:#2E5AA8; --majorelle-2:#213F78; --majorelle-soft:#DFE8F6;    /* bleu zellige */
+  /* Charte « Marrakech ville rouge » : terracotta (principal), safran, ocre, sable chaud ; accents zellige vert/bleu */
+  --bg:#FBF6EC; --surface:#FFFFFF; --surface-2:#F5EDDF; --line:#E8DCC8; --ink:#2B1E1C; --muted:#6B5A52;
+  --accent:#A8432A; --accent-ink:#FFFFFF; --accent-soft:#F5DED2;           /* terracotta */
+  --terra:#A8432A; --terra-soft:#F5DED2;                                    /* terracotta (alias) */
+  --majorelle:#3B46B8; --majorelle-2:#2E3A8C; --majorelle-soft:#E4E6F8;    /* bleu (accent) */
   --ocre:#A8652A; --ocre-soft:#F3E4D0;                                     /* ocre */
   --safran:#E0A526;                                                         /* safran : décor, grands titres */
-  --slate:#15463A; --slate-2:#1F6B52; --sand:#F4EDDF; --sand-2:var(--ocre); --dark:#1E2B27;
+  --slate:#7A3320; --slate-2:#A8432A; --sand:#F5EDDF; --sand-2:var(--ocre); --dark:#2B1E1C;
   --gold:#8F5E0F; --gold-soft:#FBEBC7;                                      /* safran foncé (texte), safran clair (fond) */
-  --ok:#1F6B52; --ok-soft:#D7E9E0;                                          /* vert jardin */
-  --night:#15463A; --night-ink:#FFFFFF; --night-muted:#CFE0D6;
-  --sea:#CFE2DC; --land:#F3E9DA; --land-line:#DCC6AA; --pin:#B0472C; --pin-ink:#FFFFFF;
+  --ok:#2E6B4F; --ok-soft:#DDEEDF;                                          /* vert zellige (jardin) */
+  --night:#5A2718; --night-ink:#FFFFFF; --night-muted:#E6CFC2;
+  --sea:#D6E4EE; --land:#F3E9DA; --land-line:#DCC6AA; --pin:#A8432A; --pin-ink:#FFFFFF;
   --shadow:0 1px 2px rgba(43,30,28,.06),0 8px 28px rgba(43,30,28,.1);
   --f-display:"Outfit",system-ui,sans-serif;
   --f-body:"Outfit",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -1028,26 +1028,26 @@ header.top.lang-hide .lang-btn{display:none}
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]), :root[data-brand]:not([data-theme="light"]){
-    --bg:#141019; --surface:#1E1822; --surface-2:#2A2230; --line:#3A3040; --ink:#F0E6D8; --muted:#B4A596;
-    --accent:#4FBF95; --accent-ink:#06241A; --accent-soft:#163428;
-    --terra:#EE9C74; --terra-soft:#43281F;
-    --majorelle:#8AA6E8; --majorelle-2:#1B2F57; --majorelle-soft:#233253; --ocre:#C98A4F; --ocre-soft:#3B2E17;
-    --slate:#10362B; --slate-2:#4FBF95; --sand:#1E1822; --sand-2:#5A3D23; --dark:#0C120F;
-    --gold:#E5B65E; --gold-soft:#3B2E17; --ok:#4FBF95; --ok-soft:#163428;
-    --night:#10362B; --night-muted:#BCD2C8; --chip:#1E1822; --chip-ink:#F0E6D8;
-    --sea:#14241E; --land:#2A2622; --land-line:#4A4038; --pin:#EE9C74; --pin-ink:#2A0D04;
+    --bg:#1A1412; --surface:#241C19; --surface-2:#2E2420; --line:#3E342E; --ink:#F2E7D8; --muted:#B6AA9E;
+    --accent:#EE9C74; --accent-ink:#2A0D04; --accent-soft:#46271F;
+    --terra:#EE9C74; --terra-soft:#46271F;
+    --majorelle:#8F9BF2; --majorelle-2:#2E3A8C; --majorelle-soft:#252C55; --ocre:#C98A4F; --ocre-soft:#3B2E17;
+    --slate:#4A2015; --slate-2:#EE9C74; --sand:#241C19; --sand-2:#5A3D23; --dark:#140F0D;
+    --gold:#E5B65E; --gold-soft:#3B2E17; --ok:#6CC48A; --ok-soft:#183324;
+    --night:#3A241C; --night-muted:#D8C3B5; --chip:#241C19; --chip-ink:#F2E7D8;
+    --sea:#1A2430; --land:#2A2622; --land-line:#4A4038; --pin:#EE9C74; --pin-ink:#2A0D04;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.38);
   }
 }
 :root[data-theme="dark"], :root[data-theme="dark"][data-brand]{
-  --bg:#141019; --surface:#1E1822; --surface-2:#2A2230; --line:#3A3040; --ink:#F0E6D8; --muted:#B4A596;
-  --accent:#4FBF95; --accent-ink:#06241A; --accent-soft:#163428;
-  --terra:#EE9C74; --terra-soft:#43281F;
-  --majorelle:#8AA6E8; --majorelle-2:#1B2F57; --majorelle-soft:#233253; --ocre:#C98A4F; --ocre-soft:#3B2E17;
-  --slate:#10362B; --slate-2:#4FBF95; --sand:#1E1822; --sand-2:#5A3D23; --dark:#0C120F;
-  --gold:#E5B65E; --gold-soft:#3B2E17; --ok:#4FBF95; --ok-soft:#163428;
-  --night:#10362B; --night-muted:#BCD2C8; --chip:#1E1822; --chip-ink:#F0E6D8;
-  --sea:#14241E; --land:#2A2622; --land-line:#4A4038; --pin:#EE9C74; --pin-ink:#2A0D04;
+  --bg:#1A1412; --surface:#241C19; --surface-2:#2E2420; --line:#3E342E; --ink:#F2E7D8; --muted:#B6AA9E;
+  --accent:#EE9C74; --accent-ink:#2A0D04; --accent-soft:#46271F;
+  --terra:#EE9C74; --terra-soft:#46271F;
+  --majorelle:#8F9BF2; --majorelle-2:#2E3A8C; --majorelle-soft:#252C55; --ocre:#C98A4F; --ocre-soft:#3B2E17;
+  --slate:#4A2015; --slate-2:#EE9C74; --sand:#241C19; --sand-2:#5A3D23; --dark:#140F0D;
+  --gold:#E5B65E; --gold-soft:#3B2E17; --ok:#6CC48A; --ok-soft:#183324;
+  --night:#3A241C; --night-muted:#D8C3B5; --chip:#241C19; --chip-ink:#F2E7D8;
+  --sea:#1A2430; --land:#2A2622; --land-line:#4A4038; --pin:#EE9C74; --pin-ink:#2A0D04;
 }
 
 /* Accessibilité : lien d'évitement (visible au clavier) et focus visible */
@@ -1477,8 +1477,8 @@ footer.foot .social span{width:34px;height:34px;border-radius:50%;border:1px sol
   --zellige-gold:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%23E0A526' stroke-width='1.1'%3E%3Crect x='8' y='8' width='24' height='24'/%3E%3Cpath d='M20 4 36 20 20 36 4 20Z'/%3E%3C/g%3E%3C/svg%3E");
   /* Filigrane zellige très discret (pour le héros, posé sur une photo) */
   --zellige-faint:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%23F0D28A' stroke-width='1' stroke-opacity='0.16'%3E%3Crect x='8' y='8' width='24' height='24'/%3E%3Cpath d='M20 4 36 20 20 36 4 20Z'/%3E%3C/g%3E%3C/svg%3E");
-  /* Étoile pleine (ornement de titre), terracotta */
-  --zellige-star:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='%23B0472C'%3E%3Crect x='9' y='9' width='22' height='22'/%3E%3Crect x='9' y='9' width='22' height='22' transform='rotate(45 20 20)'/%3E%3C/g%3E%3C/svg%3E");
+  /* Étoile pleine (ornement de titre), safran doré */
+  --zellige-star:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='%23C8911E'%3E%3Crect x='9' y='9' width='22' height='22'/%3E%3Crect x='9' y='9' width='22' height='22' transform='rotate(45 20 20)'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 /* Héros : filigrane zellige très discret par-dessus le dégradé (sous le texte) + liseré zellige en bas */
