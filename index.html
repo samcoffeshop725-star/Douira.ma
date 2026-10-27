@@ -328,7 +328,7 @@ footer.foot button:hover{color:var(--ink);text-decoration:underline}
   footer.foot .wrap{grid-template-columns:1fr}
   .diag{grid-template-columns:1fr}
 }
-@media (max-width:860px){
+@media (max-width:1024px){
   header.top{position:static}
   header.top .wrap{gap:8px 12px}
   nav.main{order:3;width:100%;flex-wrap:nowrap;overflow-x:auto}
@@ -710,7 +710,7 @@ html.vitrine .val,html.vitrine .hyp{display:none}
   .mbook-space{display:block;height:84px}
   body:has(.mbook) .toasts{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 }
-@media (max-width:860px){
+@media (max-width:1024px){
   .demobar .wrap{gap:6px 10px;padding-block:6px}
   .demobar .desc{display:none}
   .demobar label{font-size:0;gap:0!important}
@@ -781,7 +781,7 @@ header.top.qs-compact.qs-open .qs-pop{left:0;right:0;width:auto;max-width:none}
   header.top.qs-open .qs{display:block;order:20;flex:1 0 100%;max-width:none;padding-bottom:4px}
   header.top.qs-open .qs-pop{left:0;right:0;width:auto;max-width:none}
 }
-@media (max-width:860px){
+@media (max-width:1024px){
   .qs-btn{width:44px;height:44px;border-radius:10px}
   header.top.qs-open .qs,header.top.qs-compact.qs-open .qs{position:absolute;left:calc(-1 * max(16px,env(safe-area-inset-left,0px)));right:calc(-1 * max(16px,env(safe-area-inset-right,0px)));top:100%;padding:10px max(16px,env(safe-area-inset-right,0px)) 12px;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 10px 20px rgba(58,28,18,.08);z-index:30}
   header.top.qs-open .qs .qs-ico{left:calc(max(16px,env(safe-area-inset-left,0px)) + 12px);top:32px}
@@ -836,7 +836,7 @@ body.has-assist footer.foot{padding-bottom:64px}
   body.has-assist:has(.mbook) .toasts{bottom:calc(164px + env(safe-area-inset-bottom,0px))}
   body:has(.mbook) .assist-panel{bottom:calc(96px + env(safe-area-inset-bottom,0px));height:min(600px,calc(100dvh - 200px))}
 }
-@media (max-width:860px){
+@media (max-width:1024px){
   .assist-fab{padding:0;width:56px;height:56px;justify-content:center}
   .assist-fab span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .assist-fab svg{width:26px;height:26px}
@@ -884,7 +884,7 @@ body.mv-on{overflow:hidden}
 .mv-th.on,.mv-th:hover{opacity:1}
 .mv-th.on{border-color:#F5EADB}
 .mv button:focus-visible{outline:2px solid #F5EADB;outline-offset:2px}
-@media (max-width:860px){
+@media (max-width:1024px){
   .mv-stage{padding:0}
   .mv-nav{width:40px;height:40px;font-size:1.6rem;background:rgba(0,0,0,.45)}
   .mv-nav.prev{left:6px}.mv-nav.next{right:6px}
@@ -913,7 +913,7 @@ body.mv-on{overflow:hidden}
 .breakdown .eur-row{color:var(--muted);font-size:.86rem;text-align:right}
 .mbook .eur{display:block;font-size:.78rem}
 header.top.lang-hide .lang-btn{display:none}
-@media (max-width:860px){.lang-btn{display:none}}
+@media (max-width:1024px){.lang-btn{display:none}}
 @media print{#assist,.qs,.qs-btn{display:none!important}}
 
 /* Packs complets */
@@ -958,7 +958,7 @@ header.top.lang-hide .lang-btn{display:none}
 .svm{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;font:inherit;color:inherit;cursor:pointer}
 .svm:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
 .svm img{width:96px;height:72px;object-fit:cover;border-radius:10px}
-@media (max-width:860px){.svhero{grid-template-columns:1fr}.svhero img{order:-1;aspect-ratio:2/1}}
+@media (max-width:1024px){.svhero{grid-template-columns:1fr}.svhero img{order:-1;aspect-ratio:2/1}}
 /* Activités à proximité (section « À proximité » de la fiche d'un bien) */
 .actcats{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
 .actlist{list-style:none;margin:0;padding:0;display:grid;gap:10px}
@@ -1046,7 +1046,7 @@ header.top.theme-hide .theme-btn{display:none}
 @media (min-width:1300px){header.top .wrap{max-width:1280px}} /* l'en-tête gagne la place du bouton de thème sur grand écran */
 body.home-top header.top:not(.scrolled) .theme-btn{background:transparent;color:#FFFFFF;border-color:rgba(255,255,255,.7)}
 .theme-item{display:none}
-@media (max-width:860px){.theme-btn{display:none}.theme-item{display:flex;align-items:center;gap:10px;font-weight:700}.theme-item .ico{width:18px;height:18px}}
+@media (max-width:1024px){.theme-btn{display:none}.theme-item{display:flex;align-items:center;gap:10px;font-weight:700}.theme-item .ico{width:18px;height:18px}}
 .theme-sel{display:inline-flex;align-items:center;gap:8px;font-size:inherit}
 .theme-sel select{font:inherit;font-size:.85rem;padding:4px 28px 4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.45);background:transparent;color:#FFFFFF;min-height:32px}
 .theme-sel select option{color:#2B1E1C;background:#FFFFFF}
@@ -1177,12 +1177,12 @@ body.home-top.has-demobar header.top.scrolled{top:0}
 .lrail{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;padding:4px 2px;margin:0 -2px}
 .lrail::-webkit-scrollbar{display:none}
 .lrail > .lwrap{flex:0 0 clamp(220px,74vw,282px);scroll-snap-align:start}
-@media(min-width:860px){.lrail > .lwrap{flex-basis:280px}}
+@media(min-width:1024px){.lrail > .lwrap{flex-basis:280px}}
 .rail-a{position:absolute;top:36%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:none;place-items:center;cursor:pointer;box-shadow:var(--shadow);z-index:4;transition:transform .15s}
 .rail-a svg{width:18px;height:18px}
 .rail-a:active{transform:translateY(-50%) scale(.9)}
 .rail-a.prev{left:-8px}.rail-a.next{right:-8px}
-@media(min-width:860px) and (hover:hover){.rail-wrap:hover .rail-a{display:grid}}
+@media(min-width:1024px) and (hover:hover){.rail-wrap:hover .rail-a{display:grid}}
 .svcard{border-radius:18px}
 .svm{border-radius:16px}
 
@@ -1382,7 +1382,7 @@ footer.foot .social span{width:34px;height:34px;border-radius:50%;border:1px sol
   footer.foot .wrap{grid-template-columns:1fr 1fr}
   .steps-h{grid-template-columns:1fr}
 }
-@media (max-width:860px){
+@media (max-width:1024px){
   /* Sur téléphone, l'accueil affiche l'écran d'application et non la vidéo : l'en-tête ne doit donc jamais
      passer en mode « posé sur la vidéo » (transparent, texte blanc), sinon il recouvre le contenu et devient illisible. */
   body.home-top header.top,body.home-top header.top.scrolled{position:sticky;top:env(safe-area-inset-top,0px);background:var(--surface);border-bottom:1px solid var(--line);color:var(--ink);animation:none}
