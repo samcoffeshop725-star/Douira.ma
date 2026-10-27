@@ -976,6 +976,7 @@ header.top.lang-hide .lang-btn{display:none}
 .act{cursor:pointer;transition:box-shadow .2s,transform .2s,border-color .2s}
 .act:hover{box-shadow:var(--shadow);border-color:color-mix(in srgb,var(--accent) 40%,var(--line));transform:translateY(-2px)}
 .act-pct{background:var(--accent);color:#fff;font-weight:700;font-size:.72rem;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.cat-tile .act-pct{position:absolute;top:10px;left:10px;z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.25)}
 /* Activités « À proximité » en slider : cartes verticales */
 .actcard{flex:0 0 clamp(190px,64vw,228px);scroll-snap-align:start;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;transition:box-shadow .2s,transform .2s,border-color .2s}
 .actcard:hover{box-shadow:var(--shadow);transform:translateY(-3px);border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
@@ -6742,10 +6743,13 @@ VIEWS.categories = () => {
   if (list.some(l => l.diamond)) tiles.push({ t: 'Biens Diamond', img: lphoto(list.find(l => l.diamond), 0), act: 'data-act="go" data-to="search" data-diamond="1"' });
   PRIV_CATS.forEach(c => { if (c.k === 'collections' ? pks.length : showServices().some(s => s.cat === c.k)) tiles.push({ t: privCatLabel(c), img: mkScene(c.scene, 5 + c.k.length), act: c.k === 'collections' ? 'data-act="go" data-to="packs"' : `data-act="go" data-to="services" data-cat="${c.k}"` }); });
   const xs = showVehicles(); if (xs.length) tiles.push({ t: 'Voitures et motos', img: xphoto(xs[0]), act: 'data-act="go" data-to="services" data-cat="veh"' });
+  const acts = (S.activities || []).filter(a => a.status !== 'draft' && a.geo);
   return `<div class="gutter"><div class="wrap stack-l" style="padding-block:14px 10px">
     <div class="app-head"><button type="button" class="rbtn" data-act="back" aria-label="Retour">${IC2.back}</button><h1>Catégories</h1><span></span></div>
     <form class="app-search" data-form="qs" role="search" autocomplete="off"><span class="qs-ico">${QS_ICON}</span><input type="search" name="q" id="cat-q" placeholder="${APP_SEARCH_PH}" aria-label="Rechercher sur le site"></form>
     <div class="cat-grid cat-grid-2">${tiles.map(t => `<button class="cat-tile" ${t.act}><img src="${t.img}" alt="" loading="lazy"><span class="t"><b>${esc(t.t)}</b></span></button>`).join('')}</div>
+    ${acts.length ? `<h2 class="app-h2" style="margin-top:4px">Activités à ${esc((S.settings.cities && S.settings.cities[0]) || 'Marrakech')}</h2>
+    <div class="cat-grid cat-grid-2">${acts.map((a, i) => `<button class="cat-tile" data-act="go" data-to="activity" data-id="${a.id}"><img src="${esc(a.photo || art(i, 2))}" alt="" loading="lazy">${pctBadge(a.pct)}<span class="t"><b>${esc(a.name)}</b><span class="small">${esc(ACT_CATEGORIES[a.cat] || a.cat)}${a.pct ? ' · −' + a.pct + ' %' : ''}</span></span></button>`).join('')}</div>` : ''}
   </div></div>`;
 };
 // Lien direct vers une catégorie de la page des services (#services puis défilement)
