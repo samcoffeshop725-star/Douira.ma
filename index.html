@@ -75,8 +75,10 @@ img{max-width:100%}
 :root[data-theme="dark"][data-brand="majorelle"]{--accent:#8FA6F2;--accent-soft:#1E2A4F;--accent-ink:#0B1433}
 
 *{box-sizing:border-box}
-html{background:var(--bg)}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+/* La page épouse exactement la largeur de l'appareil : aucun débordement horizontal (sinon iOS « rétrécit pour faire tenir » et la mise en page bouge au dézoom). */
+html{background:var(--bg);overflow-x:clip}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:clip;max-width:100%}
+img,video{max-width:100%}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
 a{color:var(--accent)}
 h1,h2,h3,h4{margin:0;line-height:1.2;text-wrap:balance}
