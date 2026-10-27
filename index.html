@@ -6474,8 +6474,8 @@ VIEWS.listing = p => {
         <p class="small muted">${IS_VITRINE && !IS_ONLINE ? "Gratuit et sans engagement. Notre équipe vous confirme la disponibilité et les modalités de paiement." : "Aucun montant n'est débité à cette étape. Le paiement se fait ensuite sur la page sécurisée du prestataire de paiement."}</p>
         ${typeof svcNote === 'function' ? svcNote() : ''}
         <div class="stack-s" style="border-top:1px solid var(--line);padding-top:12px">
-          <b class="small">${ownerContact ? 'Contacter le propriétaire' : 'Contacter l\'équipe ' + esc(S.settings.siteName)}</b>
-          <p class="small muted" style="margin:0">Une question sur ce logement ? Écrivez-nous${contactPhone ? ', par WhatsApp ou par téléphone' : ''}.</p>
+          <b class="small">Une question avant de réserver ?</b>
+          <p class="small muted" style="margin:0">Contactez ${isAutonome(l) ? 'le propriétaire' : 'notre équipe'} — par message, WhatsApp${contactPhone ? ' ou téléphone' : ''}. Sans engagement.</p>
           ${contactActions(contactPhone, 'Renseignement : ' + l.title)}
         </div>
       </aside>
