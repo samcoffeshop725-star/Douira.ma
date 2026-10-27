@@ -87,7 +87,10 @@ async function unavailable(listingId) {
 async function createBooking(ctx, body) {
   const user = requireCsrf(ctx);
   await H.rateLimit('book:' + user.id, 10, 900);
-  const l = cat.listing(str(body.listingId, 40)); const start = str(body.start, 10), end = str(body.end, 10), guests = Number(body.guests);
+  await cat.refreshDb();
+  let l = cat.listing(str(body.listingId, 40));
+  if (!l) { await cat.refreshDb(true); l = cat.listing(str(body.listingId, 40)); } // bien fraîchement publié
+  const start = str(body.start, 10), end = str(body.end, 10), guests = Number(body.guests);
   const problem = cat.validate(l, start, end, guests); if (problem) throw new H.HttpError(400, problem);
   const q = cat.quote(l, start, end, guests); const amount = Math.round(q.total * 100);
   const booking = await db.tx(async t => {
@@ -142,6 +145,8 @@ async function notifyConfirmed(booking) {
 const R = new H.Router();
 R.add('GET', '/api/health', async () => ({ ok: true, psp: (() => { try { return psp().name; } catch (e) { return null; } })(), time: new Date().toISOString() }));
 R.add('GET', '/api/me', async ctx => ctx.session ? { user: publicUser(ctx.session), csrf: ctx.session.csrf } : { user: null });
+// Catalogue public (biens et activités publiés en base) ; si la base est vide, le site garde config.js.
+R.add('GET', '/api/catalog', async ctx => { await H.rateLimit('catalog:' + ctx.ip, 120, 60); return cat.publicCatalog(); });
 
 R.add('POST', '/api/auth/register', async ctx => {
   const b = await H.readJson(ctx.req); await H.rateLimit('register:' + ctx.ip, 10, 3600);
@@ -194,7 +199,7 @@ R.add('POST', '/api/auth/password', async ctx => {
   audit(u.id, 'password.change', '', ctx.ip); return { ok: true };
 });
 R.add('GET', '/api/listings/:id/unavailable', async ctx => { await H.rateLimit('cal:' + ctx.ip, 120, 60); return { listingId: ctx.params.id, ranges: await unavailable(str(ctx.params.id, 40)) }; });
-R.add('POST', '/api/quote', async ctx => { await H.rateLimit('quote:' + ctx.ip, 60, 60); const b = await H.readJson(ctx.req); const l = cat.listing(str(b.listingId, 40)); const p = cat.validate(l, str(b.start, 10), str(b.end, 10), Number(b.guests)); if (p) throw new H.HttpError(400, p); const taken = (await unavailable(l.id)).some(([s, e]) => s < b.end && e > b.start); if (taken) throw new H.HttpError(409, 'Ces dates ne sont plus disponibles.'); return { quote: cat.quote(l, b.start, b.end, Number(b.guests)) }; });
+R.add('POST', '/api/quote', async ctx => { await H.rateLimit('quote:' + ctx.ip, 60, 60); const b = await H.readJson(ctx.req); await cat.refreshDb(); const l = cat.listing(str(b.listingId, 40)); const p = cat.validate(l, str(b.start, 10), str(b.end, 10), Number(b.guests)); if (p) throw new H.HttpError(400, p); const taken = (await unavailable(l.id)).some(([s, e]) => s < b.end && e > b.start); if (taken) throw new H.HttpError(409, 'Ces dates ne sont plus disponibles.'); return { quote: cat.quote(l, b.start, b.end, Number(b.guests)) }; });
 R.add('POST', '/api/bookings', async ctx => createBooking(ctx, await H.readJson(ctx.req)));
 R.add('GET', '/api/bookings', async ctx => { const u = requireUser(ctx); const r = await db.query('SELECT * FROM bookings WHERE user_id = $1 ORDER BY start_date DESC', [u.id]); return { bookings: r.rows.map(b => bookingView(b)) }; });
 R.add('GET', '/api/bookings/:id', async ctx => {
@@ -293,11 +298,11 @@ R.add('PUT', '/api/admin/listings/:id/access', async ctx => { const a = requireC
 /* ---------- Administration du catalogue (biens : admin/collaborateur/propriétaire ; activités : admin/agence) ---------- */
 // Les droits par rôle (et « son propre bien / sa propre activité » pour propriétaire/agence) sont appliqués dans lib/catalog_admin.
 R.add('GET', '/api/admin/catalog/listings', async ctx => { requireUser(ctx); return { listings: await ca(() => cadmin.listListings(ctx.session)) }; });
-R.add('POST', '/api/admin/catalog/listings', async ctx => { const u = requireCsrf(ctx); const body = await H.readJson(ctx.req); const l = await ca(() => cadmin.saveListing(u, body)); audit(u.id, 'listing.save', l.id, ctx.ip); return { listing: l }; });
-R.add('POST', '/api/admin/catalog/listings/:id/publish', async ctx => { const u = requireCsrf(ctx); const b = await H.readJson(ctx.req); const l = await ca(() => cadmin.publishListing(u, str(ctx.params.id, 40), !!b.publish)); audit(u.id, b.publish ? 'listing.publish' : 'listing.unpublish', l.id, ctx.ip); return { listing: l }; });
+R.add('POST', '/api/admin/catalog/listings', async ctx => { const u = requireCsrf(ctx); const body = await H.readJson(ctx.req); const l = await ca(() => cadmin.saveListing(u, body)); audit(u.id, 'listing.save', l.id, ctx.ip); cat.refreshDb(true).catch(() => {}); return { listing: l }; });
+R.add('POST', '/api/admin/catalog/listings/:id/publish', async ctx => { const u = requireCsrf(ctx); const b = await H.readJson(ctx.req); const l = await ca(() => cadmin.publishListing(u, str(ctx.params.id, 40), !!b.publish)); audit(u.id, b.publish ? 'listing.publish' : 'listing.unpublish', l.id, ctx.ip); cat.refreshDb(true).catch(() => {}); return { listing: l }; });
 R.add('GET', '/api/admin/catalog/activities', async ctx => { requireUser(ctx); return { activities: await ca(() => cadmin.listActivities(ctx.session)) }; });
-R.add('POST', '/api/admin/catalog/activities', async ctx => { const u = requireCsrf(ctx); const body = await H.readJson(ctx.req); const a = await ca(() => cadmin.saveActivity(u, body)); audit(u.id, 'activity.save', a.id, ctx.ip); return { activity: a }; });
-R.add('POST', '/api/admin/catalog/activities/:id/publish', async ctx => { const u = requireCsrf(ctx); const b = await H.readJson(ctx.req); const a = await ca(() => cadmin.publishActivity(u, str(ctx.params.id, 40), !!b.publish)); audit(u.id, b.publish ? 'activity.publish' : 'activity.unpublish', a.id, ctx.ip); return { activity: a }; });
+R.add('POST', '/api/admin/catalog/activities', async ctx => { const u = requireCsrf(ctx); const body = await H.readJson(ctx.req); const a = await ca(() => cadmin.saveActivity(u, body)); audit(u.id, 'activity.save', a.id, ctx.ip); cat.refreshDb(true).catch(() => {}); return { activity: a }; });
+R.add('POST', '/api/admin/catalog/activities/:id/publish', async ctx => { const u = requireCsrf(ctx); const b = await H.readJson(ctx.req); const a = await ca(() => cadmin.publishActivity(u, str(ctx.params.id, 40), !!b.publish)); audit(u.id, b.publish ? 'activity.publish' : 'activity.unpublish', a.id, ctx.ip); cat.refreshDb(true).catch(() => {}); return { activity: a }; });
 
 /* ---------- Administration des comptes (admin uniquement) : créer/inviter propriétaires, collaborateurs, agences ---------- */
 // Construit le lien d'invitation et envoie l'e-mail si la messagerie est configurée ; renvoie toujours le lien à l'admin.
@@ -357,8 +362,10 @@ function start() {
   db.init(process.env.DATABASE_URL); await db.migrate();
   if (!process.env.DATA_KEY) console.error('DATA_KEY absente : adresses et codes d\'accès indisponibles.');
   await seedAdmin();
-  console.log(`API : base connectée (${db.usingOfficialDriver ? 'pilote pg' : 'client intégré'}), paiement : ${(() => { try { return psp().name; } catch (e) { return 'non configuré'; } })()}`);
+  await cat.refreshDb(true).catch(() => {}); // amorce le catalogue depuis la base (repli config.js si vide)
+  console.log(`API : base connectée (${db.usingOfficialDriver ? 'pilote pg' : 'client intégré'}), catalogue : ${cat.usingDb() ? 'base' : 'config.js'}, paiement : ${(() => { try { return psp().name; } catch (e) { return 'non configuré'; } })()}`);
   setInterval(() => H.housekeeping().catch(() => {}), 10 * 60000).unref();
+  setInterval(() => cat.refreshDb(true).catch(() => {}), 60000).unref(); // rafraîchit le catalogue en base
   })();
   return startPromise;
 }

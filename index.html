@@ -7462,6 +7462,9 @@ if (IS_ONLINE) {
       markApiDown();
       return console.warn(`[${S.settings.siteName}] config.js est en mode « en-ligne » mais le serveur ne fournit pas d'API (${e.message}). Publiez le site avec node server.js, le dossier api/ et une base de données (voir SECURITE.md), ou repassez config.js en mode « vitrine ».`);
     }
+    // Catalogue depuis la base (biens et activités publiés). Si la base en a, il remplace celui de config.js ;
+    // sinon on garde config.js. On recharge l'état (vitrineState) AVANT de lire la session (vitrineState remet S.users à zéro).
+    try { const c = await api('GET', '/api/catalog'); if (c && Array.isArray(c.biens) && c.biens.length) { VCFG.biens = c.biens; VCFG.activites = Array.isArray(c.activites) ? c.activites : []; if (typeof load === 'function') load(); render(); } } catch (e) { /* catalogue base indisponible : on garde config.js */ }
     try { const j = await api('GET', '/api/me'); if (j.user) { setUser(j.user, j.csrf); render(); if (j.user.mustChangePassword) forcePasswordChange(); } } catch (e) { /* session illisible : visiteur non connecté */ }
   })();
 }

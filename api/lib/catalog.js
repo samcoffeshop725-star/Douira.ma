@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const db = require('./db');
 
 const POLICIES = { // remboursement de l'hébergement selon le délai avant l'arrivée
   flexible: { label: 'Flexible', rules: [[24, 100], [0, 0]] },
@@ -39,8 +40,67 @@ function load() {
   return cache;
 }
 const config = () => load().cfg || {};
-const listings = () => load().listings;
+
+/* ---------- Catalogue en base (biens/activités publiés) ----------
+   Quand la base contient des biens publiés, elle devient la source du catalogue (prix inclus) ;
+   sinon on garde le repli config.js. Un cache court évite d'interroger la base à chaque requête. */
+const jsonArr = s => { try { const a = JSON.parse(s || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+const num = v => (v == null || v === '') ? null : Number(v);
+// Ligne base -> forme serveur (tarification) : nightly = prix propriétaire.
+function toServerListing(r) {
+  return {
+    id: r.id, title: r.title, titleEn: r.title_en || '', city: r.city, area: r.area || '',
+    nightly: Number(r.owner_price || 0), capacity: Number(r.guests || 2), checkIn: r.check_in || '15:00', checkOut: r.check_out || '11:00',
+    policy: ['flexible', 'moderee', 'stricte'].includes(r.policy) ? r.policy : 'moderee',
+    discount: r.discount_pct > 0 ? { pct: Number(r.discount_pct), from: r.discount_from || '', to: r.discount_to || '' } : null,
+    minNights: Math.max(1, Number(r.min_nights || 1))
+  };
+}
+// Ligne base -> forme config.js (consommée telle quelle par le site, via vitrineState).
+function toCfgBien(r) {
+  return {
+    id: String(r.id).replace(/\D/g, '') || r.id, type: r.category, modeGestion: r.management_mode, telephone: r.contact_phone || '',
+    titre: r.title, titreEn: r.title_en || '', ville: r.city, quartier: r.area || '',
+    prixNuit: Number(r.owner_price || 0), voyageurs: Number(r.guests || 2),
+    chambres: Number(r.bedrooms || 0), sallesDeBain: Number(r.bathrooms || 0), surface: num(r.surface) || 0,
+    equipements: jsonArr(r.amenities), description: r.description || '', descriptionEn: r.description_en || '',
+    arrivee: r.check_in || '15:00', depart: r.check_out || '11:00', annulation: r.policy || 'moderee',
+    numeroAutorisation: r.registration_no || '', photos: jsonArr(r.photos), diamond: !!r.diamond,
+    positionApprox: (r.lat != null && r.lng != null) ? { lat: Number(r.lat), lng: Number(r.lng) } : null,
+    remise: r.discount_pct > 0 ? { pourcentage: Number(r.discount_pct), libelle: r.discount_label || '', du: r.discount_from || '', au: r.discount_to || '' } : null
+  };
+}
+function toCfgActivite(r) {
+  return {
+    id: String(r.id).replace(/\D/g, '') || r.id, nom: r.name, categorie: r.category,
+    position: (r.lat != null && r.lng != null) ? { lat: Number(r.lat), lng: Number(r.lng) } : null,
+    prix: r.price == null ? undefined : Number(r.price), note: r.note || '',
+    reduction: Number(r.discount_pct || 0), parcours: r.parcours || '', photo: r.photo || '',
+    agence: r.agency_name || '', agenceDesc: r.agency_desc || ''
+  };
+}
+let dbCache = { at: 0, ready: false, listings: [], cfgBiens: [], cfgActs: [] };
+async function refreshDb(force) {
+  if (!force && Date.now() - dbCache.at < 10000) return dbCache;
+  try {
+    const [L, A] = await Promise.all([
+      db.query("SELECT * FROM listings WHERE status = 'published'"),
+      db.query("SELECT * FROM activities WHERE status = 'published'")
+    ]);
+    const biens = L.rows.filter(r => Number(r.owner_price) > 0);
+    dbCache = { at: Date.now(), ready: true, listings: biens.map(toServerListing), cfgBiens: biens.map(toCfgBien), cfgActs: A.rows.map(toCfgActivite) };
+  } catch (e) { dbCache.at = Date.now(); /* base indisponible : on garde le repli config.js */ }
+  return dbCache;
+}
+const usingDb = () => dbCache.ready && dbCache.listings.length > 0;
+const listings = () => usingDb() ? dbCache.listings : load().listings;
 const listing = id => listings().find(l => l.id === id) || null;
+// Catalogue public pour le site (forme config.js). Renvoie la base si elle a des biens publiés, sinon rien (le site garde config.js).
+async function publicCatalog() {
+  await refreshDb();
+  if (usingDb()) return { source: 'db', biens: dbCache.cfgBiens, activites: dbCache.cfgActs };
+  return { source: 'config', biens: null, activites: null };
+}
 const markupPct = () => { const m = Number(config().markupPct); return Number.isFinite(m) ? m : 12.5; };
 const siteName = () => config().siteName || 'Douira';
 const currency = () => String(config().devise || 'MAD').toUpperCase();
@@ -88,4 +148,4 @@ function refundFor(booking, now = new Date()) {
   const rule = pol.rules.find(([h]) => hoursBefore >= h) || [0, 0];
   return { pct: rule[1], amount: Math.round(booking.amount * rule[1] / 100), policy: pol.label };
 }
-module.exports = { load, config, listings, listing, markupPct, siteName, currency, quote, validate, nights, refundFor, POLICIES, ISO, isoToday, dateStr, shiftDays, TZ };
+module.exports = { load, config, listings, listing, markupPct, siteName, currency, quote, validate, nights, refundFor, POLICIES, ISO, isoToday, dateStr, shiftDays, TZ, refreshDb, publicCatalog, usingDb };

@@ -1,5 +1,5 @@
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-u8D2bwiB6sDgnXl/w9CLTJGiSF5qoUa315P+rbpBnfg=' 'sha256-Vr7DC5VoiWhVKx9BOARmm3m8v/BJ5XtNfti4AI0f1tA='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://api.maptiler.com https://tiles.stadiamaps.com; media-src 'self' blob:; connect-src 'self' https://open.er-api.com; frame-ancestors 'none'; base-uri 'self'; form-action 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-u8D2bwiB6sDgnXl/w9CLTJGiSF5qoUa315P+rbpBnfg=' 'sha256-ZbPkO1RraKudvJ2HOG4BJEzuCbz8DWehZZj/pzD2ktU='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://api.maptiler.com https://tiles.stadiamaps.com; media-src 'self' blob:; connect-src 'self' https://open.er-api.com; frame-ancestors 'none'; base-uri 'self'; form-action 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
