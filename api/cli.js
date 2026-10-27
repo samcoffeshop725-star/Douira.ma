@@ -11,6 +11,7 @@
      node api/cli.js keygen                        génère une DATA_KEY
      node api/cli.js check                         vérifie la base (tables, verrou Supabase, administrateur, DATA_KEY)
      node api/cli.js seed <fichier.json>           enregistre les adresses/codes des biens (voir supabase/seed.example.json)
+     node api/cli.js import-catalog                importe les biens et activités de config.js dans la base
    ===================================================================== */
 'use strict';
 const db = require('./lib/db');
@@ -75,6 +76,61 @@ async function main() {
     }
     await db.tx(async t => { for (const r of rows) await t.query('INSERT INTO listing_access (listing_id, address_enc, code_enc, notes_enc) VALUES ($1, $2, $3, $4) ON CONFLICT (listing_id) DO UPDATE SET address_enc = EXCLUDED.address_enc, code_enc = EXCLUDED.code_enc, notes_enc = EXCLUDED.notes_enc, updated_at = now()', [String(r.bien).trim(), sec.encrypt(String(r.adresse).trim()), sec.encrypt(String(r.code || '')), sec.encrypt(String(r.notes || ''))]); });
     console.log(rows.length + ' accès enregistré(s), chiffrés. Supprimez maintenant ' + a[0] + ' (il contient les adresses en clair).'); return;
+  }
+  if (cmd === 'import-catalog') {
+    // Importe les biens et activités de config.js dans la base (tables listings / activities). Idempotent (ON CONFLICT).
+    const vm = require('vm');
+    const root = process.env.SITE_ROOT || path.join(__dirname, '..');
+    let cfgPath = null;
+    for (const p of [path.join(root, '..', 'config.js'), path.join(root, 'config.js'), path.join(root, '..', 'site', 'config.js')]) if (fs.existsSync(p)) { cfgPath = p; break; }
+    if (!cfgPath) throw new Error('config.js introuvable');
+    const sandbox = { window: {} };
+    vm.runInNewContext(fs.readFileSync(cfgPath, 'utf8'), sandbox, { timeout: 1000, filename: 'config.js' });
+    const cfg = sandbox.window.DOUIRA_CONFIG || {};
+    const city = (Array.isArray(cfg.villes) && cfg.villes[0]) || 'Marrakech';
+    const biens = Array.isArray(cfg.biens) ? cfg.biens : [], acts = Array.isArray(cfg.activites) ? cfg.activites : [];
+    const stripV = s => String(s || '').replace(/\?.*$/, '');   // retire l'éventuel ?v=2 des chemins de photos
+    const ACT_CATS = ['culture', 'souks', 'gastronomie', 'bienetre', 'excursions', 'sport', 'pratique'];
+    const num = (v, d = null) => (v === 0 || (v != null && v !== '' && !isNaN(Number(v)))) ? Number(v) : d;
+    const upsert = async (t, table, row) => { // noms de colonnes maîtrisés (pas d'entrée utilisateur) ; valeurs paramétrées
+      const cols = Object.keys(row), ph = cols.map((_, i) => '$' + (i + 1)).join(', ');
+      const set = cols.filter(c => c !== 'id').map(c => `${c} = EXCLUDED.${c}`).join(', ');
+      await t.query(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${ph}) ON CONFLICT (id) DO UPDATE SET ${set}`, cols.map(c => row[c]));
+    };
+    let nl = 0, na = 0;
+    await db.tx(async t => {
+      for (let i = 0; i < biens.length; i++) {
+        const b = biens[i], pos = b.positionApprox || {}, r = b.remise || {};
+        await upsert(t, 'listings', {
+          id: 'b' + (b.id || (i + 1)), category: /villa/i.test(b.type || '') ? 'villa' : 'appartement', status: 'published',
+          management_mode: b.modeGestion === 'autonome' ? 'autonome' : 'delegue',
+          title: b.titre || 'Logement', title_en: b.titreEn || '', description: b.description || '', description_en: b.descriptionEn || '',
+          city: b.ville || city, area: b.quartier || '', lat: num(pos.lat), lng: num(pos.lng),
+          guests: Math.max(1, num(b.voyageurs, 2)), bedrooms: num(b.chambres, 0), bathrooms: num(b.sallesDeBain, 0), surface: num(b.surface),
+          amenities: JSON.stringify(Array.isArray(b.equipements) ? b.equipements : []),
+          photos: JSON.stringify((Array.isArray(b.photos) ? b.photos : []).map(stripV)),
+          owner_price: Math.max(0, Math.round(num(b.prixNuit, 0))),
+          policy: ['flexible', 'moderee', 'stricte'].includes(b.annulation) ? b.annulation : 'moderee',
+          check_in: b.arrivee || '15:00', check_out: b.depart || '11:00', min_nights: Math.max(1, num(b.nuitsMin, 1)),
+          registration_no: b.numeroAutorisation || '', contact_phone: b.telephone || '', diamond: !!b.diamond,
+          discount_pct: num(r.pourcentage, 0) > 0 ? Math.min(90, Math.round(num(r.pourcentage, 0))) : 0,
+          discount_label: r.libelle || '', discount_from: r.du || null, discount_to: r.au || null,
+          published_at: new Date().toISOString()
+        });
+        nl++;
+      }
+      for (let i = 0; i < acts.length; i++) {
+        const a2 = acts[i], pos = a2.position || {};
+        await upsert(t, 'activities', {
+          id: 'a' + (a2.id || (i + 1)), name: a2.nom || 'Activité', category: ACT_CATS.includes(a2.categorie) ? a2.categorie : 'culture', status: 'published',
+          agency_name: a2.agence || '', agency_desc: a2.agenceDesc || '', lat: num(pos.lat), lng: num(pos.lng),
+          price: num(a2.prix), discount_pct: num(a2.reduction, 0) > 0 ? Math.min(90, Math.round(num(a2.reduction, 0))) : 0,
+          note: a2.note || '', parcours: a2.parcours || '', photo: stripV(a2.photo)
+        });
+        na++;
+      }
+    });
+    console.log(`${nl} bien(s) et ${na} activité(s) importés dans la base (tables listings / activities).`); return;
   }
   if (cmd === 'restore-decrypt') { const b = fs.readFileSync(a[0]); const key = Buffer.from(process.env.DATA_KEY, 'base64'); const d = crypto.createDecipheriv('aes-256-gcm', key, b.subarray(0, 12)); d.setAuthTag(b.subarray(-16)); process.stdout.write(require('zlib').gunzipSync(Buffer.concat([d.update(b.subarray(12, -16)), d.final()]))); return; }
   throw new Error('Commande inconnue. Voir l\'en-tête de api/cli.js');
