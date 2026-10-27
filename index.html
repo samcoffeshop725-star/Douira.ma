@@ -3248,13 +3248,25 @@ function listingUrl(l) {
   let base = (S.settings.siteUrl || (typeof location !== 'undefined' ? location.origin + location.pathname : '')).replace(/[#?].*$/, '').replace(/\/+$/, '');
   return base + '/#annonce-' + l.id;
 }
-// Partage d'un bien : menu de partage natif du téléphone si dispo, sinon copie du lien.
+// Partage d'un bien : fenêtre avec le lien visible, copie, WhatsApp et partage natif (toujours un retour visible).
 A.shareListing = d => {
   const l = listing(d.id); if (!l) return;
-  const url = listingUrl(l), text = `${l.title} — ${l.area}, ${l.city} · ${S.settings.siteName}`;
-  if (typeof navigator !== 'undefined' && navigator.share) { navigator.share({ title: l.title, text, url }).catch(() => {}); return; }
-  try { navigator.clipboard.writeText(url).then(() => toast('Lien copié : ' + url), () => toast('Lien : ' + url, true)); }
-  catch (e) { toast('Lien : ' + url, true); }
+  const url = listingUrl(l);
+  const txt = `${l.title} (${l.area}, ${l.city}) · ${S.settings.siteName} : ${url}`;
+  const wa = 'https://wa.me/?text=' + encodeURIComponent(txt);
+  const canNative = typeof navigator !== 'undefined' && !!navigator.share;
+  openModal(`<h2>Partager ce logement</h2>
+    <p class="small muted">Copiez le lien ou partagez-le directement.</p>
+    ${field('Lien', `<div class="row" style="gap:6px"><input id="sh-link" readonly value="${esc(url)}" class="grow" style="flex:1">${copyBtn(url, 'Copier')}</div>`)}
+    <div class="row" style="flex-wrap:wrap;gap:8px">
+      <a class="btn btn-p btn-s" href="${esc(wa)}" target="_blank" rel="noopener">Partager sur WhatsApp</a>
+      ${canNative ? `<button class="btn btn-g btn-s" data-act="shareNative" data-id="${l.id}">Autres applications…</button>` : ''}
+      <button class="btn btn-g btn-s" data-act="closeModal">Fermer</button>
+    </div>`);
+};
+A.shareNative = d => {
+  const l = listing(d.id); if (!l || typeof navigator === 'undefined' || !navigator.share) return;
+  navigator.share({ title: l.title, text: `${l.title} — ${l.area}, ${l.city} · ${S.settings.siteName}`, url: listingUrl(l) }).catch(() => {});
 };
 
 A.book = d => {
