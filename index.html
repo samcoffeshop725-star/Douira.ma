@@ -976,6 +976,16 @@ header.top.lang-hide .lang-btn{display:none}
 .act{cursor:pointer;transition:box-shadow .2s,transform .2s,border-color .2s}
 .act:hover{box-shadow:var(--shadow);border-color:color-mix(in srgb,var(--accent) 40%,var(--line));transform:translateY(-2px)}
 .act-pct{background:var(--accent);color:#fff;font-weight:700;font-size:.72rem;padding:2px 8px;border-radius:999px;white-space:nowrap}
+/* Activités « À proximité » en slider : cartes verticales */
+.actcard{flex:0 0 clamp(190px,64vw,228px);scroll-snap-align:start;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;transition:box-shadow .2s,transform .2s,border-color .2s}
+.actcard:hover{box-shadow:var(--shadow);transform:translateY(-3px);border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+.actcard-ph{position:relative;aspect-ratio:16/11;background:var(--surface-2)}
+.actcard-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.actcard-noph{position:absolute;inset:0;background:linear-gradient(135deg,var(--surface-2),var(--line))}
+.actcard-ph .act-pct{position:absolute;top:10px;left:10px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.actcard-b{padding:10px 12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.actcard-b b{font-size:.98rem;line-height:1.25}
+.actcard-b .pill{align-self:flex-start}
 /* Mini-page d'une activité */
 .actv{display:grid;grid-template-columns:1fr;gap:24px}
 @media(min-width:800px){.actv{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}}
@@ -1765,18 +1775,18 @@ function activitiesSection(l) {
   const near = nearbyActivities(l);
   if (!near.length) return '';
   const cats = [...new Set(near.map(x => x.a.cat))];
-  const item = ({ a, km }) => { const ag = actAgency(a); return `<li class="act${a.photo ? '' : ' noimg'}" data-act="go" data-to="activity" data-id="${a.id}" role="link" tabindex="0">
-    ${a.photo ? `<img class="act-img" src="${esc(a.photo)}" alt="" loading="lazy">` : ''}
-    <div class="act-b">
-      <div class="act-h"><b>${esc(a.name)}</b> ${pill([ACT_CATEGORIES[a.cat] || a.cat, ''])}${pctBadge(a.pct)}</div>
-      <div class="small muted">${fmtDist(km)}${km < 3 ? ' · ' + walkMin(km) + ' min à pied' : ''}${a.price > 0 ? ' · à partir de ' + mad(a.price) : a.price === 0 ? ' · gratuit' : ''}</div>
-      ${a.note ? `<div class="small">${esc(a.note)}</div>` : ''}
-      ${ag.name ? `<div class="act-ag"><b>${esc(ag.name)}</b></div>` : ''}
-      <span class="btn-link small">Voir le parcours${a.pct ? ' et le −' + a.pct + ' %' : ''} →</span>
-    </div></li>`; };
-  return `<p class="small muted">Autour du logement, à titre indicatif. Réductions membres à activer sur place auprès de l'agence.</p>
+  const card = ({ a, km }) => { const ag = actAgency(a); return `<article class="actcard" data-act="go" data-to="activity" data-id="${a.id}" role="link" tabindex="0">
+    <div class="actcard-ph">${a.photo ? `<img src="${esc(a.photo)}" alt="" loading="lazy">` : '<div class="actcard-noph"></div>'}${pctBadge(a.pct)}</div>
+    <div class="actcard-b">
+      <span class="pill">${esc(ACT_CATEGORIES[a.cat] || a.cat)}</span>
+      <b>${esc(a.name)}</b>
+      <span class="small muted">${fmtDist(km)}${km < 3 ? ' · ' + walkMin(km) + ' min' : ''}${a.price > 0 ? ' · dès ' + mad(a.price) : a.price === 0 ? ' · gratuit' : ''}</span>
+      ${ag.name ? `<span class="small muted">${esc(ag.name)}</span>` : ''}
+    </div></article>`; };
+  const inner = near.slice(0, 12).map(card).join('');
+  return `<p class="small muted">Autour du logement. Réductions membres à activer sur place auprès de l'agence.</p>
     <div class="actcats">${cats.map(c => `<span class="pill">${esc(ACT_CATEGORIES[c] || c)}</span>`).join(' ')}</div>
-    <ul class="actlist">${near.slice(0, 10).map(item).join('')}</ul>`;
+    ${typeof rail === 'function' ? rail(inner) : `<div class="lrail">${inner}</div>`}`;
 }
 const booking = id => S.bookings.find(b => b.id === id);
 const ticket = id => S.tickets.find(t => t.id === id);
