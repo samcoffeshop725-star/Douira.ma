@@ -961,8 +961,14 @@ header.top.lang-hide .lang-btn{display:none}
 /* Activités à proximité (section « À proximité » de la fiche d'un bien) */
 .actcats{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
 .actlist{list-style:none;margin:0;padding:0;display:grid;gap:10px}
-.act{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface);display:grid;gap:3px}
+.act{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface);display:grid;grid-template-columns:104px 1fr}
+.act.noimg{grid-template-columns:1fr}
+.act-img{width:104px;height:100%;min-height:104px;object-fit:cover;display:block;background:var(--line)}
+.act-b{padding:10px 12px;display:grid;gap:3px;align-content:start;min-width:0}
 .act-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.act-ag{font-size:.82rem;color:var(--muted);margin-top:1px}
+.act-ag b{color:var(--ink);font-weight:600}
+@media(max-width:480px){.act{grid-template-columns:80px 1fr}.act-img{width:80px;min-height:80px}}
 /* =====================================================================
    Thème « Douira 2026 » : organisation et composants inspirés des applications
    de lifestyle (Privilee) : fond blanc, typographie géométrique légère, boutons
@@ -1709,10 +1715,15 @@ function activitiesSection(l) {
   const near = nearbyActivities(l);
   if (!near.length) return '';
   const cats = [...new Set(near.map(x => x.a.cat))];
-  const item = ({ a, km }) => `<li class="act"><div class="act-h"><b>${esc(a.name)}</b> ${pill([ACT_CATEGORIES[a.cat] || a.cat, ''])}</div>
-    <div class="small muted">${fmtDist(km)}${km < 3 ? ' · ' + walkMin(km) + ' min à pied' : ''}${a.price > 0 ? ' · à partir de ' + mad(a.price) : a.price === 0 ? ' · gratuit' : ''}</div>
-    ${a.note ? `<div class="small">${esc(a.note)}</div>` : ''}
-    <a class="btn-link small" href="https://www.google.com/maps/search/?api=1&query=${a.geo.lat}%2C${a.geo.lng}" target="_blank" rel="noopener">Voir sur la carte</a></li>`;
+  const item = ({ a, km }) => `<li class="act${a.photo ? '' : ' noimg'}">
+    ${a.photo ? `<img class="act-img" src="${esc(a.photo)}" alt="" loading="lazy">` : ''}
+    <div class="act-b">
+      <div class="act-h"><b>${esc(a.name)}</b> ${pill([ACT_CATEGORIES[a.cat] || a.cat, ''])}</div>
+      <div class="small muted">${fmtDist(km)}${km < 3 ? ' · ' + walkMin(km) + ' min à pied' : ''}${a.price > 0 ? ' · à partir de ' + mad(a.price) : a.price === 0 ? ' · gratuit' : ''}</div>
+      ${a.note ? `<div class="small">${esc(a.note)}</div>` : ''}
+      ${a.agence ? `<div class="act-ag"><b>${esc(a.agence)}</b>${a.agenceDesc ? ' — ' + esc(a.agenceDesc) : ''}</div>` : ''}
+      <a class="btn-link small" href="https://www.google.com/maps/search/?api=1&query=${a.geo.lat}%2C${a.geo.lng}" target="_blank" rel="noopener">Voir sur la carte</a>
+    </div></li>`;
   return `<p class="small muted">Autour du logement, à titre indicatif (distances à vol d'oiseau depuis le secteur).</p>
     <div class="actcats">${cats.map(c => `<span class="pill">${esc(ACT_CATEGORIES[c] || c)}</span>`).join(' ')}</div>
     <ul class="actlist">${near.slice(0, 10).map(item).join('')}</ul>`;
@@ -4685,7 +4696,8 @@ function vitrineState() {
   S.activities = (Array.isArray(c.activites) ? c.activites : []).map((a, i) => ({
     id: 'a' + (a.id || i + 1), name: a.nom || 'Activité', cat: ACT_CATEGORIES[a.categorie] ? a.categorie : 'culture',
     geo: a.position && a.position.lat ? { lat: Number(a.position.lat), lng: Number(a.position.lng) } : null,
-    price: (a.prix === 0 || a.prix) ? Number(a.prix) : undefined, note: a.note || ''
+    price: (a.prix === 0 || a.prix) ? Number(a.prix) : undefined, note: a.note || '',
+    photo: typeof a.photo === 'string' ? a.photo : '', agence: a.agence || '', agenceDesc: a.agenceDesc || ''
   })).filter(a => a.geo);
   S.users = []; S.bookings = []; S.emails = []; S.tickets = []; S.requests = []; S.audit = []; S.reviews = []; S.favLists = []; S.cleaners = [];
   S.extras = (Array.isArray(c.vehicules) ? c.vehicules : []).map((x, i) => ({ id: 'v' + (i + 1), type: /moto|scooter/i.test(x.type || '') ? 'moto' : 'voiture', name: x.nom || 'Véhicule', specs: x.description || '', specsEn: x.descriptionEn || '', pricePerDay: Number(x.prixJour || 0), deposit: Number(x.caution || 0), active: true, blocks: [], photoUrl: x.photo || '' })).filter(x => x.pricePerDay > 0);

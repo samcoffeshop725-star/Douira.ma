@@ -161,17 +161,18 @@ window.DOUIRA_CONFIG = {
 
   // Activités à proximité (affichées dans « À proximité » sur la fiche d'un bien, triées par distance).
   // categorie : 'culture', 'souks', 'gastronomie', 'bienetre', 'excursions', 'sport' ou 'pratique'.
+  // photo : facultatif (fichier du dossier « photos »). agence / agenceDesc : l'agence qui propose l'activité.
   activites: [
-    { nom: 'Jardin Majorelle', categorie: 'culture', position: { lat: 31.64173, lng: -8.00328 }, prix: 170, note: "Jardin d'Yves Saint Laurent et musée berbère." },
-    { nom: 'Place Jemaa el-Fna', categorie: 'culture', position: { lat: 31.62577, lng: -7.98915 }, prix: 0, note: 'Cœur de la médina, animée à la nuit tombée.' },
-    { nom: 'Mosquée Koutoubia', categorie: 'culture', position: { lat: 31.62376, lng: -7.99335 }, prix: 0, note: 'Minaret emblématique (extérieur et jardins).' },
-    { nom: 'Palais de la Bahia', categorie: 'culture', position: { lat: 31.62183, lng: -7.98303 }, prix: 100, note: 'Palais du XIXᵉ, patios et plafonds peints.' },
-    { nom: 'Souk Semmarine', categorie: 'souks', position: { lat: 31.62952, lng: -7.98760 }, prix: 0, note: 'Artisanat, cuir, épices, tapis.' },
-    { nom: 'Jardin de la Ménara', categorie: 'culture', position: { lat: 31.61111, lng: -8.02083 }, prix: 0, note: "Bassin et pavillon face à l'Atlas." },
-    { nom: 'Hammam traditionnel, Guéliz', categorie: 'bienetre', position: { lat: 31.63500, lng: -8.01000 }, prix: 250, note: 'Gommage et soins, sur réservation.' },
-    { nom: "Désert d'Agafay", categorie: 'excursions', position: { lat: 31.46000, lng: -8.15000 }, prix: 600, note: 'Dîner et nuit sous tente à 40 min de la ville.' },
-    { nom: "Vallée de l'Ourika", categorie: 'excursions', position: { lat: 31.36000, lng: -7.70000 }, prix: 400, note: "Cascades et villages de l'Atlas, à la journée." },
-    { nom: 'Golf Amelkis', categorie: 'sport', position: { lat: 31.59000, lng: -7.95500 }, prix: 700, note: 'Parcours 18 trous au sud de la ville.' }
+    { nom: 'Jardin Majorelle', categorie: 'culture', position: { lat: 31.64173, lng: -8.00328 }, prix: 170, note: "Jardin d'Yves Saint Laurent et musée berbère.", agence: 'Marrakech Découverte', agenceDesc: 'Visites guidées de la médina et des monuments, guides francophones agréés.' },
+    { nom: 'Place Jemaa el-Fna', categorie: 'culture', position: { lat: 31.62577, lng: -7.98915 }, prix: 0, note: 'Cœur de la médina, animée à la nuit tombée.', photo: 'photos/act-jemaa.jpg', agence: 'Marrakech Découverte', agenceDesc: 'Visites guidées de la médina et des monuments, guides francophones agréés.' },
+    { nom: 'Mosquée Koutoubia', categorie: 'culture', position: { lat: 31.62376, lng: -7.99335 }, prix: 0, note: 'Minaret emblématique (extérieur et jardins).', photo: 'photos/act-koutoubia.jpg', agence: 'Marrakech Découverte', agenceDesc: 'Visites guidées de la médina et des monuments, guides francophones agréés.' },
+    { nom: 'Palais de la Bahia', categorie: 'culture', position: { lat: 31.62183, lng: -7.98303 }, prix: 100, note: 'Palais du XIXᵉ, patios et plafonds peints.', photo: 'photos/act-bahia.jpg', agence: 'Marrakech Découverte', agenceDesc: 'Visites guidées de la médina et des monuments, guides francophones agréés.' },
+    { nom: 'Souk Semmarine', categorie: 'souks', position: { lat: 31.62952, lng: -7.98760 }, prix: 0, note: 'Artisanat, cuir, épices, tapis.', photo: 'photos/act-souk.jpg', agence: 'Médina Artisanat', agenceDesc: 'Balades shopping dans les souks avec un accompagnateur local.' },
+    { nom: 'Jardin de la Ménara', categorie: 'culture', position: { lat: 31.61111, lng: -8.02083 }, prix: 0, note: "Bassin et pavillon face à l'Atlas.", agence: 'Marrakech Découverte', agenceDesc: 'Visites guidées de la médina et des monuments, guides francophones agréés.' },
+    { nom: 'Hammam traditionnel, Guéliz', categorie: 'bienetre', position: { lat: 31.63500, lng: -8.01000 }, prix: 250, note: 'Gommage et soins, sur réservation.', agence: 'Dar Essalam Bien-être', agenceDesc: 'Hammam traditionnel, gommage et massages, sur réservation.' },
+    { nom: "Désert d'Agafay", categorie: 'excursions', position: { lat: 31.46000, lng: -8.15000 }, prix: 600, note: 'Dîner et nuit sous tente à 40 min de la ville.', photo: 'photos/act-agafay.jpg', agence: 'Atlas Évasion', agenceDesc: 'Excursions à la journée et nuits sous tente, transport depuis votre logement inclus.' },
+    { nom: "Vallée de l'Ourika", categorie: 'excursions', position: { lat: 31.36000, lng: -7.70000 }, prix: 400, note: "Cascades et villages de l'Atlas, à la journée.", photo: 'photos/act-ourika.jpg', agence: 'Atlas Évasion', agenceDesc: 'Excursions à la journée et nuits sous tente, transport depuis votre logement inclus.' },
+    { nom: 'Golf Amelkis', categorie: 'sport', position: { lat: 31.59000, lng: -7.95500 }, prix: 700, note: 'Parcours 18 trous au sud de la ville.', photo: 'photos/act-golf.jpg', agence: 'Amelkis Golf Club', agenceDesc: 'Parcours 18 trous, location de matériel et cours avec moniteur.' }
   ],
 
   // Véhicules proposés en option dans les demandes (facultatif).
