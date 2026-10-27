@@ -77,6 +77,7 @@ window.DOUIRA_CONFIG = {
       reglement: 'Logement non-fumeur. Fêtes non autorisées. Calme après 22 h.',
       arrivee: '15:00', depart: '11:00', annulation: 'moderee', modeGestion: 'autonome',
       numeroAutorisation: '',
+      photos: ['photos/appart-salon-1.jpg'],
       positionApprox: { lat: 31.63702, lng: -8.01048 },
       diamond: false,
       remise: { pourcentage: 0, libelle: '', du: '', au: '' }
@@ -91,6 +92,7 @@ window.DOUIRA_CONFIG = {
       reglement: 'Logement non-fumeur. Fêtes non autorisées.',
       arrivee: '15:00', depart: '11:00', annulation: 'stricte', modeGestion: 'delegue',
       numeroAutorisation: '',
+      photos: ['photos/appart-salon-2.jpg'],
       positionApprox: { lat: 31.62154, lng: -8.01497 },
       diamond: false,
       remise: { pourcentage: 20, libelle: "Offre d'automne", du: '', au: '' }
@@ -105,6 +107,7 @@ window.DOUIRA_CONFIG = {
       reglement: 'Logement non-fumeur.',
       arrivee: '15:00', depart: '11:00', annulation: 'flexible', modeGestion: 'autonome',
       numeroAutorisation: '',
+      photos: ['photos/appart-salon-1.jpg'],
       positionApprox: { lat: 31.63051, lng: -8.01684 },
       diamond: false,
       remise: { pourcentage: 0, libelle: '', du: '', au: '' }
@@ -119,6 +122,7 @@ window.DOUIRA_CONFIG = {
       reglement: 'Logement non-fumeur. Fêtes non autorisées.',
       arrivee: '15:00', depart: '11:00', annulation: 'moderee', modeGestion: 'delegue',
       numeroAutorisation: '',
+      photos: ['photos/appart-salon-2.jpg'],
       positionApprox: { lat: 31.60452, lng: -7.99048 },
       diamond: false,
       remise: { pourcentage: 0, libelle: '', du: '', au: '' }
@@ -133,6 +137,7 @@ window.DOUIRA_CONFIG = {
       reglement: 'Logement non-fumeur. Calme après 22 h.',
       arrivee: '15:00', depart: '11:00', annulation: 'moderee', modeGestion: 'delegue',
       numeroAutorisation: '',
+      photos: ['photos/riad-patio.jpg', 'photos/riad-cour.jpg'],
       positionApprox: { lat: 31.62303, lng: -7.98702 },
       diamond: false,
       remise: { pourcentage: 10, libelle: 'Séjours en famille', du: '', au: '' }
@@ -147,6 +152,7 @@ window.DOUIRA_CONFIG = {
       reglement: "Fêtes et événements soumis à accord préalable. Non-fumeur à l'intérieur. Calme après 23 h.",
       arrivee: '15:00', depart: '11:00', annulation: 'stricte', modeGestion: 'autonome',
       numeroAutorisation: '',
+      photos: ['photos/villa-piscine.jpg', 'photos/riad-cour.jpg'],
       positionApprox: { lat: 31.67503, lng: -7.97498 },
       diamond: true,
       remise: { pourcentage: 0, libelle: '', du: '', au: '' }
