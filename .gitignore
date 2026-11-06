@@ -6,3 +6,5 @@
 api/supabase/seed.json
 sauvegardes/
 node_modules/
+# Rapports de vulnérabilités : le dépôt est public, ils ne s'y publient pas
+api/docs/AUDIT-*.md

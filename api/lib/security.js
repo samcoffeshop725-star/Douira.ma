@@ -57,6 +57,33 @@ const hmacHex = (key, msg) => crypto.createHmac('sha256', key).update(msg).diges
 function safeEqual(a, b) { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); }
 // Clé de signature des cartes de membre : CARD_SECRET, sinon dérivée de DATA_KEY
 const cardKey = () => process.env.CARD_SECRET || crypto.createHmac('sha256', dataKey()).update('douira-card').digest('hex');
-const memberToken = (userId, memberNo) => hmacHex(cardKey(), `${userId}|${memberNo}`).slice(0, 16).toUpperCase();
+/* Jeton de carte de membre. La VERSION entre dans le message signé : incrémenter
+   `users.card_version` révoque la carte précédente de ce seul membre, sans
+   toucher à celles des autres. La version 1 reprend exactement l'ancien message,
+   pour que les cartes déjà en circulation restent valables. */
+const memberToken = (userId, memberNo, version) => {
+  const v = Number(version) || 1;
+  const msg = v === 1 ? `${userId}|${memberNo}` : `${userId}|${memberNo}|v${v}`;
+  return hmacHex(cardKey(), msg).slice(0, 16).toUpperCase();
+};
+/* Jeton d'un badge d'équipe.
 
-module.exports = { hashPassword, verifyPassword, passwordProblem, encrypt, decrypt, token, sha256, hmacHex, safeEqual, memberToken };
+   Signé avec la même clé mais sur un message préfixé « badge| » : un badge
+   d'équipe ne peut donc jamais être présenté comme une carte de membre, ni
+   l'inverse, même si les deux numéros coïncidaient. */
+const badgeToken = (userId, badgeNo, version) => {
+  const v = Number(version) || 1;
+  return hmacHex(cardKey(), `badge|${userId}|${badgeNo}|v${v}`).slice(0, 16).toUpperCase();
+};
+/* Lien de téléchargement du pass Wallet : le navigateur qui ouvre le .pkpass n'a
+   pas la session de l'appli, donc le lien se porte lui-même — signé et bref. */
+function walletLink(userId, expMs) { return `${expMs}.${hmacHex(cardKey(), `wallet|${userId}|${expMs}`).slice(0, 32)}`; }
+function walletLinkUser(userId, value, nowMs) {
+  const m = /^(\d{1,15})\.([a-f0-9]{32})$/.exec(String(value || ''));
+  if (!m) return false;
+  const exp = Number(m[1]);
+  if (!(exp > (nowMs == null ? Date.now() : nowMs))) return false; // périmé
+  return safeEqual(walletLink(userId, exp), `${exp}.${m[2]}`);
+}
+
+module.exports = { hashPassword, verifyPassword, passwordProblem, encrypt, decrypt, token, sha256, hmacHex, safeEqual, memberToken, badgeToken, walletLink, walletLinkUser };

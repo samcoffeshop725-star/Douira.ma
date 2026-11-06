@@ -29,13 +29,28 @@ class MiniPool {
 }
 
 let pool = null;
+/* Certificat d'autorité de la base : un chemin de fichier, ou le PEM lui-même. */
+function loadCa(v) {
+  const s = String(v || '').trim();
+  if (!s) return null;
+  if (/-----BEGIN CERTIFICATE-----/.test(s)) return s;
+  try { return require('fs').readFileSync(s, 'utf8'); } catch (e) { console.error('DATABASE_CA : fichier illisible', e.message); return null; }
+}
 function init(url) {
   if (!url) throw new Error('DATABASE_URL manquante');
   // Supabase : la connexion directe db.<projet>.supabase.co n'existe qu'en IPv6, que Render ne sait pas joindre
   if (/@db\.[a-z0-9]+\.supabase\.co/.test(url)) console.warn('DATABASE_URL : connexion directe Supabase (IPv6 seulement) ; utilisez l\'adresse du pooler (…pooler.supabase.com, port 5432).');
   const max = Math.max(2, Number(process.env.DB_POOL_MAX) || 8);
   if (pgLib) {
-    const ssl = /sslmode=disable/.test(url) || /127\.0\.0\.1|localhost/.test(url) ? false : { rejectUnauthorized: false };
+    // TLS imposé par `ssl`. L'IDENTITÉ du serveur n'est vérifiée que si l'on a
+    // de quoi la vérifier : le certificat de l'autorité Supabase (page Project
+    // Settings > Database > SSL), passé par DATABASE_CA (chemin d'un fichier
+    // .crt, ou le PEM lui-même). Sans lui, le chiffrement tient mais n'importe
+    // qui se faisant passer pour le pooler serait accepté — on le dit au démarrage.
+    const ca = loadCa(process.env.DATABASE_CA);
+    const ssl = /sslmode=disable/.test(url) || /127\.0\.0\.1|localhost/.test(url) ? false
+      : ca ? { ca, rejectUnauthorized: true } : { rejectUnauthorized: false };
+    if (ssl && !ca) console.warn('DATABASE_CA absente : le certificat du serveur de base de données n\'est pas vérifié (TLS sans authentification).');
     // pg lit sslmode=require comme verify-full et refuserait le certificat de Supabase (autorité propre) : TLS reste imposé par `ssl`
     const connectionString = url.replace(/([?&])sslmode=[^&]*(&|$)/, (m, a, b) => b ? a : '').replace(/\?$/, '');
     pool = new pgLib.Pool({ connectionString, max, ssl, statement_timeout: 15000, idleTimeoutMillis: 30000 });

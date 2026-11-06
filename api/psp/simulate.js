@@ -5,6 +5,7 @@
    sans paiement. Aucune donnée de carte n'est demandée.
    ===================================================================== */
 'use strict';
+const mny = require('../lib/money');
 const enabled = () => process.env.PSP === 'simulate' && process.env.NODE_ENV !== 'production';
 async function createCheckout({ booking, apiUrl }) { return { ref: 'sim-' + booking.id, url: `${apiUrl}/api/psp/simulate/${encodeURIComponent(booking.id)}` }; }
 function page(booking, csrf, siteUrl) {
@@ -17,6 +18,8 @@ function page(booking, csrf, siteUrl) {
 <button class="p" name="result" value="paid">Payer (succès)</button><button name="result" value="failed">Refuser (échec)</button></form>
 <p><a href="${h(siteUrl)}/#espace-c_booking~${h(booking.id)}">Retour au site</a></p></body></html>`;
 }
-function interpret(result, booking) { return { kind: result === 'paid' ? 'paid' : 'failed', bookingId: booking.id, ref: 'sim-' + booking.id, amount: booking.amount, eventId: 'sim-' + booking.id + '-' + result + '-' + Date.now() }; }
+// Comme un vrai prestataire : le montant est renvoyé dans l'unité du prestataire
+// (lib/money.js), et c'est l'API qui le compare à ce qu'elle attend.
+function interpret(result, booking) { return { kind: result === 'paid' ? 'paid' : 'failed', bookingId: booking.id, ref: 'sim-' + booking.id, amount: mny.pspAmount(booking.amount, booking.currency), currency: String(booking.currency || '').toLowerCase(), eventId: 'sim-' + booking.id + '-' + result + '-' + Date.now() }; }
 async function refund(booking, amount) { return { ref: 'sim-refund-' + booking.id, status: 'succeeded', amount }; }
 module.exports = { name: 'simulate', enabled, createCheckout, page, interpret, refund };

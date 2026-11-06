@@ -225,7 +225,7 @@ async function handleAssistant(req, res) {
   try { data = JSON.parse(await readBody(req, AI.maxBody)); } catch (e) { return sendJson(res, e.status || 400, { error: e.status ? 'Demande trop longue.' : 'Demande invalide.' }); }
   const messages = cleanMessages(data && data.messages);
   if (!messages) return sendJson(res, 400, { error: 'Demande invalide.' });
-  const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '?';
+  const ip = clientIp(req);
   const limit = aiAllowed(ip);
   if (limit) return sendJson(res, 429, { error: limit });
   const ctx = data.context && typeof data.context === 'object' ? data.context : {};
@@ -253,9 +253,22 @@ async function handleAssistant(req, res) {
 // Journal d'accès (une ligne par requête : date, méthode, chemin, statut, durée, adresse) : activé par LOG_REQUESTS=1 ;
 // les erreurs (statut ≥ 500) sont toujours journalisées. Pas de paramètres d'URL ni de contenu de formulaire dans le journal.
 const LOG_ALL = /^(1|true|yes)$/i.test(process.env.LOG_REQUESTS || '');
+/* Adresse du client : même règle que api/lib/http.js — TRUST_PROXY = nombre de
+   mandataires devant le serveur (défaut 1), et l'on compte depuis la FIN de
+   X-Forwarded-For, car le premier élément est écrit par le client lui-même. */
+function clientIp(req) {
+  const v = String(process.env.TRUST_PROXY || '1').trim().toLowerCase();
+  const hops = v === 'true' ? 1 : v === 'false' ? 0 : (Number.isInteger(Number(v)) && Number(v) >= 0 ? Math.min(Number(v), 10) : 1);
+  if (hops > 0) {
+    const parts = String(req.headers['x-forwarded-for'] || '').split(',').map(s => s.trim()).filter(Boolean);
+    const f = parts[parts.length - hops];
+    if (f) return f.slice(0, 64);
+  }
+  return (req.socket && req.socket.remoteAddress) || '-';
+}
 function logRequest(req, res, t0) {
   if (!LOG_ALL && res.statusCode < 500) return;
-  const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || (req.socket && req.socket.remoteAddress) || '-';
+  const ip = clientIp(req);
   console.log(`${new Date().toISOString()} ${req.method} ${(req.url || '').split('?')[0].slice(0, 200)} ${res.statusCode} ${Date.now() - t0}ms ${ip}`);
 }
 /* ---------- SEO : sitemap.xml et robots.txt générés depuis config.js quand SITE_URL est définie ----------
@@ -286,12 +299,25 @@ const server = http.createServer((req, res) => {
       const f = seoFile(relSeo);
       if (f) { const body = Buffer.from(f.body); res.writeHead(200, Object.assign(securityHeaders(), { 'Content-Type': f.type, 'Cache-Control': 'public, max-age=3600', 'Content-Length': body.length })); return res.end(req.method === 'HEAD' ? undefined : body); }
     }
-    if (api && (req.url || '').startsWith('/api/') && (req.url || '').split('?')[0] !== '/api/assistant') {
+    // /api/assistant existe deux fois : l'assistant ANONYME du site (ci-dessous,
+    // sans outils, pour le visiteur qui n'a pas de compte) et l'assistant de
+    // l'API (avec session, outils de catalogue et passage à l'équipe), que
+    // l'appli appelle. Un appel qui porte le cookie de session va à l'API ;
+    // sans cookie, c'est le visiteur du site. Avant, tout allait à l'anonyme :
+    // l'appli n'atteignait jamais le sien.
+    const pathname = (req.url || '').split('?')[0];
+    // Adresses courtes exigées par les boutiques d'applications (politique de
+    // confidentialité, assistance) : le site est une page unique, on renvoie
+    // vers la vue correspondante.
+    const COURTES = { '/confidentialite': '/#legal-privacy', '/privacy': '/#legal-privacy', '/cgu': '/#legal-cgu', '/support': '/#legal-mentions', '/aide': '/#legal-mentions' };
+    if (COURTES[pathname]) { res.writeHead(302, Object.assign({ Location: COURTES[pathname], 'Cache-Control': 'no-store' }, securityHeaders())); return res.end(); }
+    const avecSession = /(?:^|;\s*)douira_s=/.test(String(req.headers.cookie || ''));
+    if (api && (req.url || '').startsWith('/api/') && (pathname !== '/api/assistant' || avecSession)) {
       // Les en-têtes de sécurité sont ajoutés ici ; l'API écrit la réponse elle-même
       const h = securityHeaders(); for (const k of Object.keys(h)) res.setHeader(k, h[k]);
       return api.handle(req, res).catch(err => { console.error(err); if (!res.headersSent) sendJson(res, 500, { error: 'Erreur du serveur.' }); });
     }
-    if ((req.url || '').split('?')[0] === '/api/assistant') {
+    if (pathname === '/api/assistant') {
       if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'POST') { res.writeHead(405, Object.assign({ Allow: 'GET, HEAD, POST' }, securityHeaders())); return res.end(); }
       return handleAssistant(req, res).catch(err => { console.error(err); if (!res.headersSent) sendJson(res, 500, { error: 'Erreur du serveur.' }); });
     }

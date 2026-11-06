@@ -48,9 +48,28 @@ function html(res, status, text, headers = {}) {
 }
 function redirect(res, url) { res.writeHead(303, { Location: url, 'Cache-Control': 'no-store' }); res.end(); }
 
-// Adresse du client : derrière Render/Cloudflare, premier élément de X-Forwarded-For (TRUST_PROXY=1), sinon la socket
+/* Adresse du client derrière un ou plusieurs mandataires (Render, Cloudflare).
+   TRUST_PROXY = NOMBRE de mandataires de confiance devant le serveur (défaut 1 ;
+   0 = aucun, on lit la socket). Chaque mandataire AJOUTE l'adresse de qui lui
+   parle À LA FIN de X-Forwarded-For : le dernier élément vient du mandataire le
+   plus proche, l'avant-dernier du précédent… et le PREMIER vient de n'importe
+   qui — le client l'écrit lui-même. On compte donc depuis la fin : avec un
+   mandataire, l'adresse réelle est le dernier élément. Lire le premier laissait
+   contourner toutes les limites par adresse en forgeant l'en-tête. */
+function trustedHops() {
+  const v = String(process.env.TRUST_PROXY || '1').trim().toLowerCase();
+  if (v === 'true') return 1;
+  if (v === 'false') return 0;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 ? Math.min(n, 10) : 1;
+}
 function clientIp(req) {
-  if (/^(1|true)$/i.test(process.env.TRUST_PROXY || '1')) { const f = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim(); if (f) return f.slice(0, 64); }
+  const hops = trustedHops();
+  if (hops > 0) {
+    const parts = String(req.headers['x-forwarded-for'] || '').split(',').map(s => s.trim()).filter(Boolean);
+    const f = parts[parts.length - hops];
+    if (f) return f.slice(0, 64);
+  }
   return (req.socket && req.socket.remoteAddress) || '?';
 }
 const isHttps = req => req.headers['x-forwarded-proto'] === 'https' || (req.socket && req.socket.encrypted) || false;
@@ -71,6 +90,15 @@ async function housekeeping() {
   await db.query("DELETE FROM rate_limits WHERE window_start < now() - interval '1 day'");
   await db.query('DELETE FROM sessions WHERE expires_at < now()');
   await db.query("DELETE FROM password_resets WHERE expires_at < now() - interval '1 day'");
+  // Pièces justificatives : on efface l'image à l'échéance, en gardant la trace
+  // de vérification (preuve que l'obligation légale a été remplie).
+  await db.query("UPDATE client_documents SET file_enc = NULL, updated_at = now()"
+    + " WHERE file_enc IS NOT NULL AND expires_at < now()").catch(() => {});
+  // Vérification du visage : le selfie part à la décision. Ceci n'est que le
+  // filet, pour un dossier qu'on aurait laissé sans réponse — une donnée
+  // biométrique ne doit jamais survivre à sa raison d'être.
+  await db.query("UPDATE kyc_checks SET selfie_enc = NULL"
+    + " WHERE selfie_enc IS NOT NULL AND expires_at < now()").catch(() => {});
 }
 
 /* Routeur minimal : add('GET', '/api/bookings/:id', handler) ; handler(ctx) renvoie une valeur JSON ou écrit lui-même la réponse. */

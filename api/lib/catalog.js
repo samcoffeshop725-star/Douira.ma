@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const db = require('./db');
+const mny = require('./money');
 
 const POLICIES = { // remboursement de l'hébergement selon le délai avant l'arrivée
   flexible: { label: 'Flexible', rules: [[24, 100], [0, 0]] },
@@ -63,6 +64,7 @@ function toCfgBien(r) {
     titre: r.title, titreEn: r.title_en || '', ville: r.city, quartier: r.area || '',
     prixNuit: Number(r.owner_price || 0), voyageurs: Number(r.guests || 2),
     chambres: Number(r.bedrooms || 0), sallesDeBain: Number(r.bathrooms || 0), surface: num(r.surface) || 0,
+    lits: Number(r.beds || 0), chambresDetail: jsonArr(r.rooms),
     equipements: jsonArr(r.amenities), description: r.description || '', descriptionEn: r.description_en || '',
     arrivee: r.check_in || '15:00', depart: r.check_out || '11:00', annulation: r.policy || 'moderee',
     numeroAutorisation: r.registration_no || '', photos: jsonArr(r.photos), diamond: !!r.diamond,
@@ -76,7 +78,11 @@ function toCfgActivite(r) {
     position: (r.lat != null && r.lng != null) ? { lat: Number(r.lat), lng: Number(r.lng) } : null,
     prix: r.price == null ? undefined : Number(r.price), note: r.note || '',
     reduction: Number(r.discount_pct || 0), parcours: r.parcours || '', photo: r.photo || '',
-    agence: r.agency_name || '', agenceDesc: r.agency_desc || ''
+    agence: r.agency_name || '', agenceDesc: r.agency_desc || '',
+    // Quand elle a lieu, et comment joindre l'agence. Vides tant que
+    // l'agence ne les a pas saisis : on n'invente ni date ni numéro.
+    date: r.starts_on ? dateStr(r.starts_on) : '', heure: r.starts_at || '',
+    telephone: r.phone || '', agenceId: r.agency_id || null
   };
 }
 let dbCache = { at: 0, ready: false, listings: [], cfgBiens: [], cfgActs: [] };
@@ -94,7 +100,39 @@ async function refreshDb(force) {
 }
 const usingDb = () => dbCache.ready && dbCache.listings.length > 0;
 const listings = () => usingDb() ? dbCache.listings : load().listings;
-const listing = id => listings().find(l => l.id === id) || null;
+/**
+ * Retrouve un bien par l'identifiant que le CLIENT connaît.
+ *
+ * Le catalogue public ne publie pas l'identifiant interne : `toCfgBien` n'en
+ * garde que les chiffres, pour que les liens du site (/logement/1) restent
+ * ceux de config.js quand la base prend le relais. L'appli renvoie donc « 1 »
+ * là où la base range « b1 ».
+ *
+ * Sans cette correspondance, un devis ou une réservation sur un catalogue
+ * servi par la base échoue par « Logement introuvable », et le calendrier
+ * d'un bien complet paraît entièrement libre. On accepte donc les deux
+ * formes — l'exacte d'abord, pour qu'un identifiant réellement numérique ne
+ * soit jamais détourné vers un autre bien.
+ */
+function trouverBien(list, id) {
+  const v = String(id == null ? '' : id);
+  if (!v || !Array.isArray(list)) return null;
+  const exact = list.find(l => l.id === v);
+  if (exact) return exact;
+  const chiffres = v.replace(/\D/g, '');
+  if (!chiffres) return null;
+  return list.find(l => String(l.id).replace(/\D/g, '') === chiffres) || null;
+}
+const listing = id => trouverBien(listings(), id);
+
+/**
+ * Identifiant INTERNE à partir de celui envoyé par le client.
+ *
+ * À utiliser avant toute requête qui range ou relit par `listing_id` :
+ * réservations, calendrier, avis, notes. Rend la valeur reçue quand le bien
+ * est inconnu, pour que l'appelant garde la main sur l'erreur.
+ */
+const internalId = id => (listing(id) || {}).id || String(id == null ? '' : id);
 // Catalogue public pour le site (forme config.js). Renvoie la base si elle a des biens publiés, sinon rien (le site garde config.js).
 async function publicCatalog() {
   await refreshDb();
@@ -103,7 +141,10 @@ async function publicCatalog() {
 }
 const markupPct = () => { const m = Number(config().markupPct); return Number.isFinite(m) ? m : 12.5; };
 const siteName = () => config().siteName || 'Douira';
-const currency = () => String(config().devise || 'MAD').toUpperCase();
+// Devise : propre à la ville du logement (Marrakech en dirham, Dakar en franc CFA).
+// Sans logement (appel générique), on retombe sur la devise du site.
+const siteCurrency = () => String(config().devise || 'MAD').toUpperCase();
+const currency = l => (l && l.city ? mny.currencyForCity(l.city, siteCurrency()) : siteCurrency());
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const parseD = s => new Date(s + 'T00:00:00Z');
@@ -122,7 +163,7 @@ function quote(l, start, end, guests) {
   const price = Math.round(l.nightly * (1 + markupPct() / 100));
   const gross = qty * price, discountPct = activeDiscount(l, start), discount = Math.round(gross * discountPct / 100);
   const base = gross - discount;
-  return { unit: 'nuit', qty, price, gross, discountPct, discount, base, serviceFee: 0, tax: 0, total: base, guests, policy: l.policy, listingId: l.id, title: l.title, currency: currency() };
+  return { unit: 'nuit', qty, price, gross, discountPct, discount, base, serviceFee: 0, tax: 0, total: base, guests, policy: l.policy, listingId: l.id, title: l.title, currency: currency(l) };
 }
 function validate(l, start, end, guests) {
   if (!l) return 'Logement introuvable.';
@@ -148,4 +189,4 @@ function refundFor(booking, now = new Date()) {
   const rule = pol.rules.find(([h]) => hoursBefore >= h) || [0, 0];
   return { pct: rule[1], amount: Math.round(booking.amount * rule[1] / 100), policy: pol.label };
 }
-module.exports = { load, config, listings, listing, markupPct, siteName, currency, quote, validate, nights, refundFor, POLICIES, ISO, isoToday, dateStr, shiftDays, TZ, refreshDb, publicCatalog, usingDb };
+module.exports = { load, config, listings, listing, trouverBien, internalId, markupPct, siteName, currency, quote, validate, nights, refundFor, POLICIES, ISO, isoToday, dateStr, shiftDays, TZ, refreshDb, publicCatalog, usingDb };

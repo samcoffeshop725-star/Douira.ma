@@ -1,5 +1,9 @@
-# Render · variante « site + API » : un service web Node (server.js + api/), base PostgreSQL chez Supabase (api/supabase/LISEZ-MOI.md).
-# À copier en render.yaml à la racine du dépôt à la place du blueprint statique quand config.js est en mode 'en-ligne'.
+# Render · service unique « site + API » : un web service Node (server.js + api/) qui
+# sert le site, les pages légales ET l'API, devant la base Supabase (voir
+# api/supabase/LISEZ-MOI.md). HTTPS fourni et renouvelé par Render.
+#
+# Déploiement : Render > New > Blueprint > ce dépôt. Render lit ce fichier, crée le
+# service, puis demande les valeurs « sync: false » (secrets) à saisir une fois.
 services:
   - type: web
     name: douira
@@ -14,6 +18,8 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false                     # Supabase > Session pooler (…pooler.supabase.com:5432)
+      - key: DATABASE_CA
+        value: api/supabase/supabase-ca.crt   # certificat racine Supabase (public, versionné) : authentifie le serveur de base (TLS vérifié)
       - key: DATA_KEY
         sync: false                     # générée une fois : node api/cli.js keygen ; à sauvegarder hors de Render
       - key: SITE_URL
@@ -25,6 +31,8 @@ services:
       - key: PSP
         value: stripe
       - key: STRIPE_SECRET_KEY
-        sync: false
+        sync: false                     # clé de TEST (sk_test_) pour la revue Apple ; sk_live_ au vrai lancement
       - key: STRIPE_WEBHOOK_SECRET
-        sync: false
+        sync: false                     # secret du webhook Stripe pointant sur https://<service>.onrender.com/api/webhooks/stripe
+      - key: ANTHROPIC_API_KEY
+        sync: false                     # facultatif : assistant des voyageurs ; vide = assistant désactivé proprement

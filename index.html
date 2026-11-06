@@ -196,6 +196,19 @@ dl.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
 .cats{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
 .cat-chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font:inherit;font-weight:600;font-size:.88rem;cursor:pointer;color:var(--ink)}
 .cat-chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+/* Grille « bento » de l'accueil, façon appli : une grande tuile puis des demi-tuiles. */
+.bento{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+.tile{position:relative;border:1px solid var(--line);border-radius:22px;overflow:hidden;min-height:132px;display:flex;flex-direction:column;justify-content:flex-end;text-align:left;font:inherit;color:inherit;cursor:pointer;padding:0;background:var(--accent-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
+.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--accent)}
+.tile-xl{grid-column:1 / -1;min-height:208px}
+.tile-ph{position:absolute;inset:0}
+.tile-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.tile-ph::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(20,10,6,.62))}
+.tile-cap{position:relative;z-index:1;padding:14px 16px;display:grid;gap:2px}
+.tile-cap b{font-size:1.05rem}
+.tile.photo .tile-cap{color:#fff}
+.tile.photo .tile-cap .muted{color:rgba(255,255,255,.85)}
+@media(max-width:560px){.bento{gap:10px}}
 .lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px}
 .lcard{display:flex;flex-direction:column;gap:10px;background:none;border:0;padding:0;text-align:left;font:inherit;color:inherit;cursor:pointer}
 .lcard .ph{border-radius:12px;overflow:hidden;aspect-ratio:4/3;max-width:100%;background:var(--surface-2);position:relative}
@@ -1716,8 +1729,8 @@ const STAR = '<svg viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke=
 /* ---------- État (en production : base PostgreSQL derrière l'API) ---------- */
 const LS_KEY = 'douira-demo-v7';
 // E-mail de l'administrateur par défaut. Il le modifie ensuite dans Paramètres > Contacts et notifications.
-const ADMIN_EMAIL = 'mohmed.anas.mosseddaq@gmail.com';
-const OLD_ADMIN_EMAIL = 'admin@douira.example';
+const ADMIN_EMAIL = 'admin@douira.example';
+const OLD_ADMIN_EMAIL = 'mohmed.anas.mosseddaq@gmail.com';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 let S = null;
 
@@ -6826,10 +6839,24 @@ packServiceLines = function (pk, nights, guests) { return _packServiceLinesPriv(
 // Accueil de l'application (écran 1) : affiché sur téléphone à la place de la vidéo, par CSS
 function appHome() {
   const list = publicListings().sort((a, b) => recoScore(b) - recoScore(a));
-  const nouveau = publicListings().slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+  const villas = list.filter(l => (category(l.categoryId) || {}).templateId === 'villas');
+  const showSvc = typeof servicesPageOn === 'function' && servicesPageOn();
+  const pks = typeof publicPacks === 'function' ? publicPacks() : [];
+  const u = me(), client = u && u.role === 'client';
+  const big = list[0], vph = villas[0] || list.find(l => l.diamond) || list[1] || big;
+  // Grille « bento » façon application : une grande tuile Logements, puis des
+  // demi-tuiles vers les VRAIES sections du site (sans lien mort).
+  const tiles = [];
+  if (big) tiles.push(`<button class="tile tile-xl photo" data-act="go" data-to="search"><span class="tile-ph"><img src="${lphoto(big, 0)}" alt="" loading="lazy"></span><span class="tile-cap"><b>Logements</b><span class="small muted">${plural(list.length, 'adresse')} vérifiée${list.length > 1 ? 's' : ''}</span></span></button>`);
+  tiles.push(`<button class="tile photo" data-act="go" data-to="search" data-diamond="1"><span class="tile-ph"><img src="${vph ? lphoto(vph, 0) : art(3, 1)}" alt="" loading="lazy"></span><span class="tile-cap"><b>Villas &amp; Diamond</b><span class="small muted">Nos biens d'exception</span></span></button>`);
+  if (showSvc) tiles.push(`<button class="tile" data-act="go" data-to="services"><span class="tile-cap"><b>Services</b><span class="small muted">À votre logement</span></span></button>`);
+  else if (pks.length) tiles.push(`<button class="tile" data-act="go" data-to="packs"><span class="tile-cap"><b>Packs</b><span class="small muted">Tout en une fois</span></span></button>`);
+  else tiles.push(`<button class="tile" data-act="go" data-to="propose"><span class="tile-cap"><b>Proposer mon bien</b><span class="small muted">Devenez hôte</span></span></button>`);
   return `<div class="app-home gutter">
     <form class="app-search" data-form="qs" role="search" autocomplete="off"><span class="qs-ico">${QS_ICON}</span><input type="search" name="q" id="app-q" placeholder="${APP_SEARCH_PH}" aria-label="Rechercher sur le site"></form>
-    ${nouveau ? `<button class="app-hero" data-act="go" data-to="listing" data-id="${nouveau.id}"><img src="${lphoto(nouveau, 0)}" alt=""><span class="t"><span>Nouveau sur ${esc(S.settings.siteName)}</span><span class="arrow" aria-hidden="true">→</span></span></button>` : ''}
+    ${catChips()}
+    <div class="bento">${tiles.join('')}</div>
+    ${client ? `<button data-act="go" data-to="space" data-tab="c_stay" style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;border:0;border-radius:18px;padding:15px 16px;background:var(--accent);color:var(--accent-ink);font:inherit;cursor:pointer;text-align:left"><span style="display:grid;gap:2px"><b>Votre carte membre</b><span class="small" style="color:var(--accent-ink);opacity:.82">Avantages et QR de séjour</span></span><span aria-hidden="true" style="font-size:1.2rem">→</span></button>` : ''}
     <div class="row between"><h2 class="app-h2">Recommandé pour vous</h2><button class="btn btn-g btn-s map-pill" data-act="go" data-to="search" data-view="map">${IC2.map}Carte</button></div>
     <div class="app-rail">${list.slice(0, 6).map(l => `<button class="app-card" data-act="go" data-to="listing" data-id="${l.id}"><img src="${lphoto(l, 0)}" alt="" loading="lazy"><b>${esc(ltitle(l))}</b><span class="small muted">${esc(l.area)} · ${mad(pubPrice(l))} / ${UNIT_LABEL[tplOf(l).units[0]]}</span></button>`).join('')}</div>
   </div>`;
@@ -6858,22 +6885,23 @@ afterRender = function () {
   if (R.name === 'services' && R.p.cat) { const el = document.getElementById(R.p.cat === 'veh' ? 'sv-veh' : 'cat-' + R.p.cat); if (el) setTimeout(() => el.scrollIntoView({ block: 'start' }), 50); }
 };
 // Barre d'onglets : Accueil · Catégories · Check-in · Mises à jour · Moi (libellés de l'application)
+// Barre d'onglets alignée sur l'application Douira : Accueil · Favoris ·
+// Réservations · Messages · Profil (cinq onglets égaux, sans tuile centrale).
 tabBar = function () {
   const u = me(), client = u && u.role === 'client';
   if (u && !client) return '';
   const on = (n, tab) => (R.name === n && (!tab || R.p.tab === tab)) ? ' aria-current="true"' : '';
-  const QR = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M6.5 6.5h1v1h-1zM16.5 6.5h1v1h-1zM6.5 16.5h1v1h-1z" fill="currentColor"/></svg>';
-  const UPD = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 9h8M8 12.5h8M8 16h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+  const HEART = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20S4 14.6 4 9.3A3.9 3.9 0 0 1 11.4 7l.6.7.6-.7A3.9 3.9 0 0 1 20 9.3C20 14.6 12 20 12 20z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+  // Comptes fermés (vitrine hors ligne) : les onglets personnels renvoient au Contact.
+  const noAcc = IS_VITRINE && !IS_ONLINE && !client;
+  const perso = tab => client ? ` data-act="go" data-to="space" data-tab="${tab}"${on('space', tab)}`
+    : noAcc ? ' data-act="go" data-to="contact"' : ' data-act="login"';
   return `<nav class="tabbar" aria-label="Navigation mobile">
     <button data-act="go" data-to="home"${on('home')}>${IC2.home}Accueil</button>
-    <button data-act="go" data-to="categories"${on('categories')}>${IC2.grid}Catégories</button>
-    ${(() => { // Vitrine sans comptes : pas de connexion possible → le check-in renvoie vers Contact
-      const noAcc = IS_VITRINE && !IS_ONLINE && !client;
-      return `<button class="ctr" data-act="${client ? 'go' : noAcc ? 'go' : 'login'}"${client ? ' data-to="space" data-tab="c_stay"' : noAcc ? ' data-to="contact"' : ''}${client ? on('space', 'c_stay') : noAcc ? on('contact') : ''}><span class="c">${QR}</span>Check-in</button>`; })()}
-    ${(() => { // « Mises à jour » : e-mails de la démo ; en ligne, statut des réservations ; visiteur, offres en cours
-      const tab = IS_ONLINE ? 'c_bookings' : 'c_inbox';
-      return `<button data-act="go" data-to="${client ? 'space' : 'search'}"${client ? ` data-tab="${tab}"` : ' data-promo="1"'}${client ? (IS_ONLINE ? '' : on('space', tab)) : (R.name === 'search' && R.p.promo === '1' ? ' aria-current="true"' : '')}>${UPD}Mises à jour</button>`; })()}
-    <button data-act="${client ? 'go' : 'login'}"${client ? ' data-to="space" data-tab="c_bookings"' : ''}${client ? (R.name === 'space' && /^c_(bookings|booking|profile|favs|reviews|tickets|ticket)$/.test(R.p.tab || '') ? ' aria-current="true"' : '') : ''}>${IC2.user}Moi</button>
+    <button${perso('c_favs')}>${HEART}Favoris</button>
+    <button${perso('c_bookings')}>${IC2.cal}Réservations</button>
+    <button${perso('c_tickets')}>${IC2.chat}Messages</button>
+    <button${perso('c_profile')}>${IC2.user}Profil</button>
   </nav><div class="tabbar-space"></div>`;
 };
 // Fiche d'un logement : accordéon « Vos avantages » (écran 3 : Overview, Entry & access, Your exclusive benefits)
@@ -7205,7 +7233,7 @@ if (IS_ONLINE) {
   };
 
   /* ---------- Espace client ---------- */
-  NAV.client = [['c_bookings', 'Mes réservations'], ['c_stay', 'Check-in'], ['c_profile', 'Mon profil']];
+  NAV.client = [['c_bookings', 'Mes réservations'], ['c_favs', 'Favoris'], ['c_tickets', 'Messages'], ['c_stay', 'Check-in'], ['c_profile', 'Mon profil']];
   navCount = () => 0;
   const STATUS = { pending_payment: ['En attente de paiement', 'warn'], confirmed: ['Confirmée', 'ok'], cancelled: ['Annulée', ''], failed: ['Paiement refusé', 'bad'], expired: ['Expirée', ''] };
   const pill = st => { const [t, c] = STATUS[st] || [st, '']; return `<span class="pill ${c}">${esc(t)}</span>`; };
