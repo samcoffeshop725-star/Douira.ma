@@ -67,6 +67,7 @@ function toCfgBien(r) {
     lits: Number(r.beds || 0), chambresDetail: jsonArr(r.rooms),
     equipements: jsonArr(r.amenities), description: r.description || '', descriptionEn: r.description_en || '',
     arrivee: r.check_in || '15:00', depart: r.check_out || '11:00', annulation: r.policy || 'moderee',
+    nuitsMin: Math.max(1, Number(r.min_nights || 1)),
     numeroAutorisation: r.registration_no || '', photos: jsonArr(r.photos), diamond: !!r.diamond,
     positionApprox: (r.lat != null && r.lng != null) ? { lat: Number(r.lat), lng: Number(r.lng) } : null,
     remise: r.discount_pct > 0 ? { pourcentage: Number(r.discount_pct), libelle: r.discount_label || '', du: r.discount_from || '', au: r.discount_to || '' } : null

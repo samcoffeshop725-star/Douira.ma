@@ -216,6 +216,10 @@ async function listForUser(userId) {
 
 /** Lit une conversation : refuse si l'utilisateur n'en est pas membre. */
 async function readConversation(userId, conversationId) {
+  // Un identifiant tronqué ou absent (vieux marque-page, lien coupé) n'est pas une panne
+  // du serveur : sans ce garde-fou, Postgres remontait « invalid input syntax for bigint »
+  // en 500, et le visiteur lisait « Erreur du serveur » au lieu de « introuvable ».
+  if (!/^\d+$/.test(String(conversationId || ''))) throw err(404, 'Conversation introuvable.');
   const c = await db.one('SELECT * FROM conversations WHERE id = $1', [conversationId]);
   if (!c) throw err(404, 'Conversation introuvable.');
   const members = await membersOf(c.id);
